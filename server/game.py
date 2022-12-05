@@ -10,6 +10,13 @@ from human_aware_rl.rllib.rllib import load_agent
 import random, os, pickle, json
 import ray
 
+from select import select
+
+from tutorenvs.overcooked import OvercookedTutorEnv
+
+from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
+from HTNAgent.tact_agent import TACTAgent
+
 # Relative path to where all static pre-trained agents are stored on server
 AGENT_DIR = None
 
@@ -579,6 +586,7 @@ class OvercookedGame(Game):
         return obj_dict
 
     def get_policy(self, npc_id, idx=0):
+        return HTNAI()
         if npc_id.lower().startswith("rllib"):
             try:
                 # Loading rllib agents requires additional helpers
@@ -740,6 +748,40 @@ class DummyOvercookedGame(OvercookedGame):
     def get_policy(self, *args, **kwargs):
         return DummyAI()
 
+class HTNAI():
+    def __init__(self):
+        self.state = {}
+        self.env = OvercookedTutorEnv()
+        self.agent = TACTAgent(actions=overcooked_actions, methods=overcooked_methods, relations=[], env=self.env)
+
+        # Run the HTN planner in the background, iterating
+        # with the same task over and over
+        Thread(target=self.iterate_htn).start()
+
+        # self.env.state_queue_w.send({})
+
+    def iterate_htn(self):
+        while True:
+            task = 'make_onion_soup'
+            self.agent.request({}, task)
+
+    def action(self, state):
+        self.env.state_queue_w.send({})
+        self.state = state
+
+        # Block on the SAI queue in the env to get the
+        # next action
+        # sigs, _, _ = select([self.env.sai_queue_r], [], [])
+        (s, a, i) = self.sig.recv()
+        if a == "MoveUp":
+            return Direction.NORTH, None
+        elif a == "MoveDown":
+            return Direction.SOUTH, None
+        else:
+            return Action.STAY, None
+
+    def reset(self):
+        pass
 
 class DummyAI():
     """
