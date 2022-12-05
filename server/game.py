@@ -758,24 +758,35 @@ class HTNAI():
         # with the same task over and over
         Thread(target=self.iterate_htn).start()
 
+        self.pause_ticks = 0
+
         # self.env.state_queue_w.send({})
 
     def iterate_htn(self):
         while True:
             task = 'make_onion_soup'
+            print('ticking HTN')
             self.agent.request({}, task)
 
     def action(self, state):
+        if self.pause_ticks > 0:
+            self.pause_ticks -= 1
+            return Action.STAY, None
+
+        # Send a state, unblocking the HTN
         self.env.state_queue_w.send({})
+
         self.state = state
 
         # Block on the SAI queue in the env to get the
         # next action
         # sigs, _, _ = select([self.env.sai_queue_r], [], [])
-        (s, a, i) = self.sig.recv()
+        sig = select([self.env.sai_queue_r], [], [])[0][0]
+        (s, a, i) = sig.recv()
         if a == "MoveUp":
             return Direction.NORTH, None
         elif a == "MoveDown":
+            self.pause_ticks = 5
             return Direction.SOUTH, None
         else:
             return Action.STAY, None
