@@ -753,9 +753,13 @@ class DummyOvercookedGame(OvercookedGame):
 class HTNAI():
     def __init__(self, game):
         self.game = game
-        self.state = {}
+        self.state = None
         self.env = OvercookedTutorEnv()
         self.agent = TACTAgent(actions=overcooked_actions, methods=overcooked_methods, relations=[], env=self.env)
+
+        self.waiting_player_pos = None
+
+        self.target_pos = (1, 2)
 
         # Run the HTN planner in the background, iterating
         # with the same task over and over
@@ -763,7 +767,12 @@ class HTNAI():
 
         self.pause_ticks = 0
 
+        self.target_pos
+
         # self.env.state_queue_w.send({})
+
+    def ai_player_pos(self):
+        return self.state.players[1].position
 
     # Returns the game terrain grid, populated with
     # current player positions (and, maybe one day,
@@ -789,7 +798,14 @@ class HTNAI():
 
         return terrain
 
-    def get_path(self, terrain, src, dst):
+    # BFS for a path from (x, y) coordinates src to dst.
+    # src and dst coordinates are within the transposed terrain space.
+    # Returns the list of coordinates along the path, including src and dst.
+    def get_path(self, src, dst, allow_dynamic_obstacles=True):
+        obstacles = [' ']
+        if allow_dynamic_obstacles:
+            obstacles.append('i')
+
         terrain = self.active_terrain()
         if terrain is None:
             return []
@@ -812,7 +828,7 @@ class HTNAI():
             if pop[1] < len(terrain[0]):
                 neighbors.append((pop[0], pop[1]+1))
             neighbors = [n for n in neighbors if n not in seen]
-            neighbors = [n for n in neighbors if terrain[n[0]][n[1]] in ['i', ' ']]
+            neighbors = [n for n in neighbors if terrain[n[0]][n[1]] in obstacles]
 
             for n in neighbors:
                 trace[n] = pop
@@ -837,26 +853,106 @@ class HTNAI():
 
         return path[::-1]
 
+    # Transforms a set of path coordinates, including
+    # src and dst coordinates, into directional move actions.
+    def path_to_move_actions(self, path):
+        moves = []
+        for i in range(1, len(path)):
+            coord = path[i]
+            last = path[i-1]
+            if coord[0] > last[0]:
+                moves.append(Direction.EAST)
+            elif coord[0] < last[0]:
+                moves.append(Direction.WEST)
+            elif coord[1] < last[1]:
+                moves.append(Direction.NORTH)
+            else:
+                moves.append(Direction.SOUTH)
+
+        return moves
+
     def iterate_htn(self):
         while True:
             task = 'make_onion_soup'
             # print('ticking HTN')
             self.agent.request({}, task)
 
+    def handle_pathing(self):
+        if self.target_pos is None:
+            return None
+        if self.ai_player_pos() == self.target_pos:
+            # print('done')
+            self.target_pos = None
+            return None
+        else:
+            # print('still pathing to %s' % (self.target_pos,))
+            # print('     currently at %s' % (self.ai_player_pos(),))
+
+            # Check to see if we just moved for the other
+            # player. If we did, and they haven't moved
+            # again yet, we'll keep waiting.
+            if self.waiting_player_pos is not None:
+                if self.waiting_player_pos == self.state.players[0].position:
+                    # print('just got out of your way; waiting for you to move')
+                    return Action.STAY
+                else:
+                    # print("good, you moved! I'm gonna keep going now")
+                    self.waiting_player_pos = None
+
+            # Path to the target and take the first step
+
+            # First, try pathing around the other player
+            moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=False))
+            if len(moves) == 0:
+                # If there's a path through another player, we can
+                # try to shove them out of the way...
+                moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=True))
+                if len(moves) == 0:
+                    self.target_pos = None
+                    return None
+
+            # Check that the next step is possible
+            move = moves[0]
+            terrain = self.active_terrain()
+            (x, y) = self.ai_player_pos()
+            (dx, dy) = move
+            target = (x+dx, y+dy)
+            # print('     trying to go to %s' % (target,))
+            if terrain[target[0]][target[1]] == ' ':
+                return move
+            else:
+                # There's probably a player in the way. If they're looking at us,
+                # assume they're trying to shove us out of the way, and
+                # step back one.
+                their_pos = self.state.players[0].position
+                if their_pos == target:
+                    (their_x, their_y) = their_pos
+                    (face_x, face_y) = self.state.players[0].orientation
+                    their_target = (their_x+face_x, their_y+face_y)
+                    if their_target == self.ai_player_pos():
+                        # print('moving out of your way')
+                        self.waiting_player_pos = (their_x, their_y)
+                        return (face_x, face_y)
+
+                # print('next location blocked; waiting')
+                return Action.STAY
+
     def action(self, state):
-        if self.pause_ticks > 0:
-            self.pause_ticks -= 1
-            return Action.STAY, None
+        self.state = state
+
+        move = self.handle_pathing()
+        if move is not None:
+            return move, None
 
         # Send a state, unblocking the HTN
         self.env.state_queue_w.send({})
 
-        self.state = state
-
+        '''
         t = self.active_terrain()
         for l in t:
             print(''.join(l))
         print('')
+        '''
 
         # Block on the SAI queue in the env to get the
         # next action
