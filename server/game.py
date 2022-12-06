@@ -10,6 +10,8 @@ from human_aware_rl.rllib.rllib import load_agent
 import random, os, pickle, json
 import ray
 
+from copy import deepcopy
+
 from select import select
 
 from tutorenvs.overcooked import OvercookedTutorEnv
@@ -586,7 +588,7 @@ class OvercookedGame(Game):
         return obj_dict
 
     def get_policy(self, npc_id, idx=0):
-        return HTNAI()
+        return HTNAI(self)
         if npc_id.lower().startswith("rllib"):
             try:
                 # Loading rllib agents requires additional helpers
@@ -749,7 +751,8 @@ class DummyOvercookedGame(OvercookedGame):
         return DummyAI()
 
 class HTNAI():
-    def __init__(self):
+    def __init__(self, game):
+        self.game = game
         self.state = {}
         self.env = OvercookedTutorEnv()
         self.agent = TACTAgent(actions=overcooked_actions, methods=overcooked_methods, relations=[], env=self.env)
@@ -762,10 +765,82 @@ class HTNAI():
 
         # self.env.state_queue_w.send({})
 
+    # Returns the game terrain grid, populated with
+    # current player positions (and, maybe one day,
+    # other "dynamic obstacles"?)
+    def active_terrain(self):
+        if not self.game._is_active:
+            return None
+
+        terrain = deepcopy(self.game.mdp.terrain_mtx)
+        # transpose the terrain
+        terrain_T = []
+        for c in range(len(terrain[0])):
+            col = []
+            for r in range(len(terrain)):
+                col.append(terrain[r][c])
+            terrain_T.append(col)
+
+        terrain = terrain_T
+
+        for player in self.state.players:
+            (x, y) = player.position
+            terrain[x][y] = 'i' # "i" for players
+
+        return terrain
+
+    def get_path(self, terrain, src, dst):
+        terrain = self.active_terrain()
+        if terrain is None:
+            return []
+
+        seen = set()
+        queue = [src]
+        trace = dict()
+
+        while len(queue) > 0:
+            pop = queue[0]
+            seen.add(pop)
+            queue = queue[1:]
+            neighbors = []
+            if pop[0] > 0:
+                neighbors.append((pop[0]-1, pop[1]))
+            if pop[0] < len(terrain):
+                neighbors.append((pop[0]+1, pop[1]))
+            if pop[1] > 0:
+                neighbors.append((pop[0], pop[1]-1))
+            if pop[1] < len(terrain[0]):
+                neighbors.append((pop[0], pop[1]+1))
+            neighbors = [n for n in neighbors if n not in seen]
+            neighbors = [n for n in neighbors if terrain[n[0]][n[1]] in ['i', ' ']]
+
+            for n in neighbors:
+                trace[n] = pop
+
+            if dst in neighbors:
+                break
+
+            # Enqueue each neighbor
+            queue = queue + neighbors
+
+        if dst not in trace:
+            return []
+
+        # Build the path from the traces
+        cursor = dst
+        path = []
+        while True:
+            path.append(cursor)
+            if cursor not in trace:
+                break
+            cursor = trace[cursor]
+
+        return path[::-1]
+
     def iterate_htn(self):
         while True:
             task = 'make_onion_soup'
-            print('ticking HTN')
+            # print('ticking HTN')
             self.agent.request({}, task)
 
     def action(self, state):
@@ -777,6 +852,11 @@ class HTNAI():
         self.env.state_queue_w.send({})
 
         self.state = state
+
+        t = self.active_terrain()
+        for l in t:
+            print(''.join(l))
+        print('')
 
         # Block on the SAI queue in the env to get the
         # next action
