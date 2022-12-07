@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
 from queue import Queue, LifoQueue, Empty, Full
-from time import time
+from time import time, sleep
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.actions import Action, Direction
@@ -759,11 +759,18 @@ class HTNAI():
 
         self.waiting_player_pos = None
 
-        self.target_pos = (1, 2)
+        self.block_htn = False
+
+        # self.target_pos = (1, 2)
+        self.target_pos = None
+
+        # Send an initial state, including a target pos
+        # self.env.state_queue_w.send({"pos": "1,1"})
 
         # Run the HTN planner in the background, iterating
         # with the same task over and over
         Thread(target=self.iterate_htn).start()
+        Thread(target=self.send_state).start()
 
         self.pause_ticks = 0
 
@@ -871,11 +878,19 @@ class HTNAI():
 
         return moves
 
+    def send_state(self):
+        while True:
+            if not self.block_htn:
+                self.env.state_queue_w.send({'pos': {'id': 'pos', 'value': '1,2'}})
+            sleep(0.1)
+
     def iterate_htn(self):
         while True:
             task = 'make_onion_soup'
             # print('ticking HTN')
-            self.agent.request({}, task)
+            # self.agent.request({"pos": "1,1"}, task)
+            # self.env.state_queue_w.send({})
+            self.agent.request({'pos': {'id': 'pos', 'value': '1,2'}}, task)
 
     def handle_pathing(self):
         if self.target_pos is None:
@@ -938,6 +953,7 @@ class HTNAI():
                 return Action.STAY
 
     def action(self, state):
+        self.block_htn = True
         self.state = state
 
         move = self.handle_pathing()
@@ -945,7 +961,8 @@ class HTNAI():
             return move, None
 
         # Send a state, unblocking the HTN
-        self.env.state_queue_w.send({})
+        # self.env.state_queue_w.send({"pos": "1,1"})
+        self.block_htn = False
 
         '''
         t = self.active_terrain()
@@ -964,7 +981,17 @@ class HTNAI():
         elif a == "MoveDown":
             self.pause_ticks = 5
             return Direction.SOUTH, None
+        elif a == "MoveTo":
+            (x, y) = [int(e) for e in i['value'].split(',')]
+            self.target_pos = (x, y)
+            self.block_htn = True
+            move = self.handle_pathing()
+            if move is not None:
+                return move, None
+            else:
+                return Action.STAY, None
         else:
+            print("unknown SAI %s, %s, %s" % (s, a, i))
             return Action.STAY, None
 
     def reset(self):
