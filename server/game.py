@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from threading import Lock, Thread
 from queue import Queue, LifoQueue, Empty, Full
-from time import time, sleep
+from time import time
 from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.actions import Action, Direction
@@ -10,14 +10,7 @@ from human_aware_rl.rllib.rllib import load_agent
 import random, os, pickle, json
 import ray
 
-from copy import deepcopy
-
-from select import select
-
-from tutorenvs.overcooked import OvercookedTutorEnv
-
-from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
-from HTNAgent.tact_agent import TACTAgent
+from htn_ai import HTNAI
 
 # Relative path to where all static pre-trained agents are stored on server
 AGENT_DIR = None
@@ -464,6 +457,7 @@ class OvercookedGame(Game):
             state = queue.get()
             npc_action, _ = policy.action(state)
             super(OvercookedGame, self).enqueue_action(policy_id, npc_action)
+        print('no longer active')
 
 
     def is_full(self):
@@ -749,253 +743,6 @@ class DummyOvercookedGame(OvercookedGame):
 
     def get_policy(self, *args, **kwargs):
         return DummyAI()
-
-class HTNAI():
-    def __init__(self, game):
-        self.game = game
-        self.state = None
-        self.env = OvercookedTutorEnv()
-        self.agent = TACTAgent(actions=overcooked_actions, methods=overcooked_methods, relations=[], env=self.env)
-
-        self.waiting_player_pos = None
-
-        self.block_htn = False
-
-        # self.target_pos = (1, 2)
-        self.target_pos = None
-
-        # Send an initial state, including a target pos
-        # self.env.state_queue_w.send({"pos": "1,1"})
-
-        # Run the HTN planner in the background, iterating
-        # with the same task over and over
-        Thread(target=self.iterate_htn).start()
-        Thread(target=self.send_state).start()
-
-        self.pause_ticks = 0
-
-        self.target_pos
-
-        # self.env.state_queue_w.send({})
-
-    def ai_player_pos(self):
-        return self.state.players[1].position
-
-    # Returns the game terrain grid, populated with
-    # current player positions (and, maybe one day,
-    # other "dynamic obstacles"?)
-    def active_terrain(self):
-        if not self.game._is_active:
-            return None
-
-        terrain = deepcopy(self.game.mdp.terrain_mtx)
-        # transpose the terrain
-        terrain_T = []
-        for c in range(len(terrain[0])):
-            col = []
-            for r in range(len(terrain)):
-                col.append(terrain[r][c])
-            terrain_T.append(col)
-
-        terrain = terrain_T
-
-        for player in self.state.players:
-            (x, y) = player.position
-            terrain[x][y] = 'i' # "i" for players
-
-        return terrain
-
-    # BFS for a path from (x, y) coordinates src to dst.
-    # src and dst coordinates are within the transposed terrain space.
-    # Returns the list of coordinates along the path, including src and dst.
-    def get_path(self, src, dst, allow_dynamic_obstacles=True):
-        obstacles = [' ']
-        if allow_dynamic_obstacles:
-            obstacles.append('i')
-
-        terrain = self.active_terrain()
-        if terrain is None:
-            return []
-
-        seen = set()
-        queue = [src]
-        trace = dict()
-
-        while len(queue) > 0:
-            pop = queue[0]
-            seen.add(pop)
-            queue = queue[1:]
-            neighbors = []
-            if pop[0] > 0:
-                neighbors.append((pop[0]-1, pop[1]))
-            if pop[0] < len(terrain):
-                neighbors.append((pop[0]+1, pop[1]))
-            if pop[1] > 0:
-                neighbors.append((pop[0], pop[1]-1))
-            if pop[1] < len(terrain[0]):
-                neighbors.append((pop[0], pop[1]+1))
-            neighbors = [n for n in neighbors if n not in seen]
-            neighbors = [n for n in neighbors if terrain[n[0]][n[1]] in obstacles]
-
-            for n in neighbors:
-                trace[n] = pop
-
-            if dst in neighbors:
-                break
-
-            # Enqueue each neighbor
-            queue = queue + neighbors
-
-        if dst not in trace:
-            return []
-
-        # Build the path from the traces
-        cursor = dst
-        path = []
-        while True:
-            path.append(cursor)
-            if cursor not in trace:
-                break
-            cursor = trace[cursor]
-
-        return path[::-1]
-
-    # Transforms a set of path coordinates, including
-    # src and dst coordinates, into directional move actions.
-    def path_to_move_actions(self, path):
-        moves = []
-        for i in range(1, len(path)):
-            coord = path[i]
-            last = path[i-1]
-            if coord[0] > last[0]:
-                moves.append(Direction.EAST)
-            elif coord[0] < last[0]:
-                moves.append(Direction.WEST)
-            elif coord[1] < last[1]:
-                moves.append(Direction.NORTH)
-            else:
-                moves.append(Direction.SOUTH)
-
-        return moves
-
-    def send_state(self):
-        while True:
-            if not self.block_htn:
-                self.env.state_queue_w.send({'pos': {'id': 'pos', 'value': '1,2'}})
-            sleep(0.1)
-
-    def iterate_htn(self):
-        while True:
-            task = 'make_onion_soup'
-            # print('ticking HTN')
-            # self.agent.request({"pos": "1,1"}, task)
-            # self.env.state_queue_w.send({})
-            self.agent.request({'pos': {'id': 'pos', 'value': '1,2'}}, task)
-
-    def handle_pathing(self):
-        if self.target_pos is None:
-            return None
-        if self.ai_player_pos() == self.target_pos:
-            # print('done')
-            self.target_pos = None
-            return None
-        else:
-            # print('still pathing to %s' % (self.target_pos,))
-            # print('     currently at %s' % (self.ai_player_pos(),))
-
-            # Check to see if we just moved for the other
-            # player. If we did, and they haven't moved
-            # again yet, we'll keep waiting.
-            if self.waiting_player_pos is not None:
-                if self.waiting_player_pos == self.state.players[0].position:
-                    # print('just got out of your way; waiting for you to move')
-                    return Action.STAY
-                else:
-                    # print("good, you moved! I'm gonna keep going now")
-                    self.waiting_player_pos = None
-
-            # Path to the target and take the first step
-
-            # First, try pathing around the other player
-            moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=False))
-            if len(moves) == 0:
-                # If there's a path through another player, we can
-                # try to shove them out of the way...
-                moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=True))
-                if len(moves) == 0:
-                    self.target_pos = None
-                    return None
-
-            # Check that the next step is possible
-            move = moves[0]
-            terrain = self.active_terrain()
-            (x, y) = self.ai_player_pos()
-            (dx, dy) = move
-            target = (x+dx, y+dy)
-            # print('     trying to go to %s' % (target,))
-            if terrain[target[0]][target[1]] == ' ':
-                return move
-            else:
-                # There's probably a player in the way. If they're looking at us,
-                # assume they're trying to shove us out of the way, and
-                # step back one.
-                their_pos = self.state.players[0].position
-                if their_pos == target:
-                    (their_x, their_y) = their_pos
-                    (face_x, face_y) = self.state.players[0].orientation
-                    their_target = (their_x+face_x, their_y+face_y)
-                    if their_target == self.ai_player_pos():
-                        # print('moving out of your way')
-                        self.waiting_player_pos = (their_x, their_y)
-                        return (face_x, face_y)
-
-                # print('next location blocked; waiting')
-                return Action.STAY
-
-    def action(self, state):
-        self.block_htn = True
-        self.state = state
-
-        move = self.handle_pathing()
-        if move is not None:
-            return move, None
-
-        # Send a state, unblocking the HTN
-        # self.env.state_queue_w.send({"pos": "1,1"})
-        self.block_htn = False
-
-        '''
-        t = self.active_terrain()
-        for l in t:
-            print(''.join(l))
-        print('')
-        '''
-
-        # Block on the SAI queue in the env to get the
-        # next action
-        # sigs, _, _ = select([self.env.sai_queue_r], [], [])
-        sig = select([self.env.sai_queue_r], [], [])[0][0]
-        (s, a, i) = sig.recv()
-        if a == "MoveUp":
-            return Direction.NORTH, None
-        elif a == "MoveDown":
-            self.pause_ticks = 5
-            return Direction.SOUTH, None
-        elif a == "MoveTo":
-            (x, y) = [int(e) for e in i['value'].split(',')]
-            self.target_pos = (x, y)
-            self.block_htn = True
-            move = self.handle_pathing()
-            if move is not None:
-                return move, None
-            else:
-                return Action.STAY, None
-        else:
-            print("unknown SAI %s, %s, %s" % (s, a, i))
-            return Action.STAY, None
-
-    def reset(self):
-        pass
 
 class DummyAI():
     """
