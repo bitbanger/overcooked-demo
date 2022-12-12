@@ -13,6 +13,7 @@ from HTNAgent.tact_agent import TACTAgent
 class HTNAI():
     def __init__(self, game):
         self.game = game
+        self.action_tick = 0
         self.state = None
         self.env = OvercookedTutorEnv()
         self.agent = TACTAgent(actions=overcooked_actions, methods=overcooked_methods, relations=[], env=self.env)
@@ -206,7 +207,7 @@ class HTNAI():
                     # state_dict = {'p1_pos': {'id': 'p1_pos', 'value': ','.join([str(e) for e in self.state.players[0].position])}}
                     state_dict = self.build_state_dict()
                 self.env.state_queue_w.send(state_dict)
-            sleep(0.2)
+            sleep(0.1)
 
     def iterate_htn(self):
         while True:
@@ -285,6 +286,13 @@ class HTNAI():
                 return Action.STAY
 
     def action(self, state):
+        # Let the ticks stabilize out to guarantee a fresh state
+        self.action_tick = (self.action_tick+1)%2
+        if self.action_tick > 0:
+            return Action.STAY, None
+
+        # sleep(0.5)
+        print('timestep is %s' % (state.to_dict()['timestep']))
         print('got state p1 pos %s' % (state.players[1].position,))
         self.block_htn = True
         # print('setting state to %s' % state.to_dict())
@@ -293,6 +301,7 @@ class HTNAI():
 
         move = self.handle_pathing()
         if move is not None:
+            print('in 1, got move %s' % (move,))
             return move, None
 
         # Send a state, unblocking the HTN
@@ -317,20 +326,27 @@ class HTNAI():
             self.pause_ticks = 5
             return Direction.SOUTH, None
         elif a == "MoveTo":
+            print('GAME TAKING ACTION: moveto %s' % (i,))
             (x, y) = [int(e) for e in i['value'].split(',')]
             self.target_pos = (x, y)
             self.block_htn = True
+            '''
             move = self.handle_pathing()
             if move is not None:
+                print('in 2, got move %s' % (move,))
                 return move, None
             else:
                 # block_htn = False
                 return Action.STAY, None
+            '''
+            return Action.STAY, None
         elif a == "Move":
+            print('GAME TAKING ACTION: move %s' % (i,))
             print('moving %s' % i['value'])
             (x, y) = [int(e) for e in i['value'].split(',')]
             return (x, y), None
         elif a == "Interact":
+            print('GAME TAKING ACTION: interact')
             return Action.INTERACT, None
         else:
             print("unknown SAI %s, %s, %s" % (s, a, i))
