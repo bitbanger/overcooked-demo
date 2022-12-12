@@ -201,13 +201,15 @@ class HTNAI():
 
     def send_state(self):
         while True:
+            sleep(0.1)
+            if self.action_tick > 0:
+                continue
             if not self.block_htn:
                 state_dict = {}
                 if self.state is not None:
                     # state_dict = {'p1_pos': {'id': 'p1_pos', 'value': ','.join([str(e) for e in self.state.players[0].position])}}
                     state_dict = self.build_state_dict()
                 self.env.state_queue_w.send(state_dict)
-            sleep(0.1)
 
     def iterate_htn(self):
         while True:
@@ -292,7 +294,7 @@ class HTNAI():
             return Action.STAY, None
 
         # sleep(0.5)
-        print('timestep is %s' % (state.to_dict()['timestep']))
+        # print('timestep is %s' % (state.to_dict()['timestep']))
         print('got state p1 pos %s' % (state.players[1].position,))
         self.block_htn = True
         # print('setting state to %s' % state.to_dict())
