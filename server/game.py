@@ -455,7 +455,10 @@ class OvercookedGame(Game):
         policy = self.npc_policies[policy_id]
         while self._is_active:
             state = queue.get()
+            state = self.state
+            print('GAME publishing state %s' % (state.to_dict()))
             npc_action, _ = policy.action(state)
+            print('got npc_action %s' % (npc_action,))
             super(OvercookedGame, self).enqueue_action(policy_id, npc_action)
         print('no longer active')
 
@@ -491,6 +494,7 @@ class OvercookedGame(Game):
         for i in range(len(self.players)):
             try:
                 joint_action[i] = self.pending_actions[i].get(block=False)
+                print('updated action %s from player %d' % (joint_action[i], i))
             except Empty:
                 pass
         
@@ -503,6 +507,7 @@ class OvercookedGame(Game):
         # Send next state to all background consumers if needed
         if self.curr_tick % self.ticks_per_ai_action == 0:
             for npc_id in self.npc_policies:
+                # print('GAME sending out state %s' % (self.state.to_dict()))
                 self.npc_state_queues[npc_id].put(self.state, block=False)
 
         # Update score based on soup deliveries that might have occured
@@ -515,6 +520,7 @@ class OvercookedGame(Game):
 
     def enqueue_action(self, player_id, action):
         overcooked_action = self.action_to_overcooked_action[action]
+        # print('enqueueing action %s for player %s' % (overcooked_action, player_id))
         super(OvercookedGame, self).enqueue_action(player_id, overcooked_action)
 
     def reset(self):

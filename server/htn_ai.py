@@ -1,4 +1,5 @@
 from copy import deepcopy
+from json import dumps
 from select import select
 from threading import Thread
 from time import sleep
@@ -10,8 +11,15 @@ from tutorenvs.overcooked import OvercookedTutorEnv
 from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
 from HTNAgent.tact_agent import TACTAgent
 
+PRINT_TERRAIN = False
+PRINT_STATE = False
+
 class HTNAI():
     def __init__(self, game):
+        self.dirty_bit_ss = False
+        self.dirty_bit_ihtn = False
+
+        self.have_acted = False
         self.game = game
         self.action_tick = 0
         self.state = None
@@ -20,7 +28,12 @@ class HTNAI():
 
         self.waiting_player_pos = None
 
+        self.state_dirty_bit = False
+        self.state_hash = None
+
         self.block_htn = False
+
+        self.last_timestep = -1
 
         # self.target_pos = (1, 2)
         self.target_pos = None
@@ -143,11 +156,10 @@ class HTNAI():
         state = dict()
 
         t = self.active_terrain()
-        '''
-        for l in t:
-            print(''.join(l))
-        print('')
-        '''
+        if PRINT_TERRAIN:
+            for l in t:
+                print(''.join(l))
+            print('')
 
         # Mark all stoves with cooked soup
         game_state = self.state.to_dict()
@@ -156,6 +168,28 @@ class HTNAI():
                 (x, y) = obj['position']
                 if obj['name'] == 'soup' and obj['is_ready']:
                     t[x][y] = '^'
+
+        # Add full ovens
+        for obj in self.state.to_dict()['objects']:
+            if obj['name'] == 'soup' and len(obj['_ingredients']) == 3:
+                (x, y) = obj['position']
+                if obj['is_ready']:
+                    t[x][y] = 'R'
+                else:
+                    t[x][y] = 'r'
+
+        # Add pos predicates for both players
+        for i in range(len(game_state['players'])):
+            state['p%d_pos' % i] = {'player': 'p%d' % i, 'pos': '%d,%d' % game_state['players'][i]['position']}
+
+        # Add targeted-square predicates for both players
+        for i in range(len(game_state['players'])):
+            player = game_state['players'][i]
+            (x, y) = player['position']
+            (dx, dy) = player['orientation']
+            (tx, ty) = (x+dx, y+dy)
+            print('player %d is at (%d, %d) and is facing (%d, %d)' % (i, x, y, dx, dy))
+            state['p%d_targeting' % i] = {'player': 'p%d' % i, 'targeted': '%d,%d' % (tx, ty)}
 
         # Add holding predicates for both players
         for i in range(len(game_state['players'])):
@@ -201,19 +235,40 @@ class HTNAI():
 
     def send_state(self):
         while True:
+            print('send_state looped')
             sleep(0.1)
-            if self.action_tick > 0:
+            # if self.action_tick > 0:
+                # continue
+            if not self.dirty_bit_ss:
                 continue
-            if not self.block_htn:
-                state_dict = {}
-                if self.state is not None:
-                    # state_dict = {'p1_pos': {'id': 'p1_pos', 'value': ','.join([str(e) for e in self.state.players[0].position])}}
-                    state_dict = self.build_state_dict()
-                self.env.state_queue_w.send(state_dict)
+            else:
+                self.dirty_bit_ss = False
+
+            if self.block_htn:
+                continue
+            state_dict = {}
+            if self.state is not None:
+                # state_dict = {'p1_pos': {'id': 'p1_pos', 'value': ','.join([str(e) for e in self.state.players[0].position])}}
+                print('building')
+                state_dict = self.build_state_dict()
+                print('done')
+            print('sending state %s' % (state_dict,))
+            self.env.state_queue_w.send(state_dict)
+            print('sent')
 
     def iterate_htn(self):
         while True:
+            print('iterate looped')
             task = 'make_onion_soup'
+            sleep(0.1)
+
+            if not self.dirty_bit_ihtn:
+                continue
+            else:
+                self.dirty_bit_ihtn = False
+
+            if self.block_htn:
+                continue
             # task = "nothin"
             # print('ticking HTN')
             # self.agent.request({"pos": "1,1"}, task)
@@ -223,7 +278,6 @@ class HTNAI():
                 # state_dict = {'p1_pos': {'id': 'p1_pos', 'value': ','.join([str(e) for e in self.state.players[0].position])}}
                 state_dict = self.build_state_dict()
             self.agent.request(state_dict, task)
-            sleep(0.2)
 
     def handle_pathing(self):
         if self.target_pos is None:
@@ -231,6 +285,7 @@ class HTNAI():
         if self.ai_player_pos() == self.target_pos:
             # print('done')
             print('at target pos of %s' % (self.target_pos,))
+            self.have_acted = False
             block_htn = False
             self.target_pos = None
             return None
@@ -263,6 +318,7 @@ class HTNAI():
 
             # Check that the next step is possible
             move = moves[0]
+            print('move is %s' % (move,))
             terrain = self.active_terrain()
             (x, y) = self.ai_player_pos()
             (dx, dy) = move
@@ -288,22 +344,40 @@ class HTNAI():
                 return Action.STAY
 
     def action(self, state):
+        print('action called')
+
+        '''
+        if state.timestep <= self.last_timestep:
+            print('timestep %s is BEFORE last timestep %s!' % (state.timestep, self.last_timestep))
+            return Action.STAY, None
+        else:
+            self.last_timestep = state.timestep
+        '''
+
         # Let the ticks stabilize out to guarantee a fresh state
         self.action_tick = (self.action_tick+1)%2
         if self.action_tick > 0:
             return Action.STAY, None
 
+        print('htn_ai setting state to %s' % state.to_dict())
+        self.state = state.deepcopy()
+        self.dirty_bit_ss = True
+        self.dirty_bit_ihtn = True
+
+        # print(state.to_dict())
+        if PRINT_STATE:
+            print(dumps(state.to_dict(), sort_keys=True, indent=4))
+
         # sleep(0.5)
         # print('timestep is %s' % (state.to_dict()['timestep']))
         print('got state p1 pos %s' % (state.players[1].position,))
         self.block_htn = True
-        # print('setting state to %s' % state.to_dict())
-        self.state = state.deepcopy()
         # return Action.STAY, None
 
         move = self.handle_pathing()
         if move is not None:
             print('in 1, got move %s' % (move,))
+            self.have_acted = True
             return move, None
 
         # Send a state, unblocking the HTN
@@ -317,11 +391,20 @@ class HTNAI():
         print('')
         '''
 
+        # Don't wait on a SAI if we know the HTN is blocked from
+        # producing one
+        if self.block_htn:
+            return Action.STAY, None
+        # sigs, _, _ = select([self.env.sai_queue_r], [], [])
         # Block on the SAI queue in the env to get the
         # next action
-        # sigs, _, _ = select([self.env.sai_queue_r], [], [])
-        sig = select([self.env.sai_queue_r], [], [])[0][0]
-        (s, a, i) = sig.recv()
+        print('waiting on a sai')
+        sig = select([self.env.sai_queue_r], [], [], timeout=0.5)
+        if all([(len(x)==0) for x in sig]):
+            print('timed out')
+            return Action.STAY, None
+        (s, a, i) = sig[0][0].recv()
+        print('got the sai')
         if a == "MoveUp":
             return Direction.NORTH, None
         elif a == "MoveDown":
@@ -346,10 +429,15 @@ class HTNAI():
             print('GAME TAKING ACTION: move %s' % (i,))
             print('moving %s' % i['value'])
             (x, y) = [int(e) for e in i['value'].split(',')]
+            self.have_acted = True
             return (x, y), None
         elif a == "Interact":
             print('GAME TAKING ACTION: interact')
+            self.have_acted = True
             return Action.INTERACT, None
+        elif a == "Wait":
+            print('GAME TAKING ACTION: wait')
+            return Action.STAY, None
         else:
             print("unknown SAI %s, %s, %s" % (s, a, i))
             return Action.STAY, None
