@@ -11,6 +11,7 @@ import random, os, pickle, json
 import ray
 
 from htn_ai import HTNAI
+from manual_ai import ManualAI
 
 # Relative path to where all static pre-trained agents are stored on server
 AGENT_DIR = None
@@ -588,7 +589,8 @@ class OvercookedGame(Game):
         return obj_dict
 
     def get_policy(self, npc_id, idx=0):
-        return HTNAI(self)
+        # return HTNAI(self)
+        return ManualAI(self)
         if npc_id.lower().startswith("rllib"):
             try:
                 # Loading rllib agents requires additional helpers
