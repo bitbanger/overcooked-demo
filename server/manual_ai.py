@@ -11,6 +11,8 @@ from tutorenvs.overcooked import OvercookedTutorEnv
 from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
 from HTNAgent.tact_agent import TACTAgent
 
+import sys
+
 PRINT_TERRAIN = False
 PRINT_STATE = False
 
@@ -38,6 +40,9 @@ class ManualAI():
         # self.target_pos = (1, 2)
         self.target_pos = None
 
+        self.pathing_to_obj = False
+        self.turning_to_target_obj = False
+
         # Send an initial state, including a target pos
         # self.env.state_queue_w.send({"pos": "1,1"})
 
@@ -48,7 +53,7 @@ class ManualAI():
 
         self.pause_ticks = 0
 
-        self.target_pos
+        # self.target_pos
 
         # self.env.state_queue_w.send({})
 
@@ -79,10 +84,35 @@ class ManualAI():
 
         return terrain
 
+    # Takes an object name and returns a list of coordinates
+    # for all matching objects in the game world
+    def ground_object(self, obj_name):
+        if not self.game._is_active:
+            return []
+
+        ground_dict = {
+            'onion': 'O',
+            'plate': 'D',
+            'pot': 'P',
+            'dropoff': 'S',
+        }
+
+        if obj_name.lower() not in ground_dict:
+            return []
+
+        coords = []
+        terr = self.active_terrain()
+        for i in range(len(terr)):
+            for j in range(len(terr[0])):
+                if ground_dict[obj_name.lower()] == terr[i][j]:
+                    coords.append((i, j))
+
+        return coords
+
     # BFS for a path from (x, y) coordinates src to dst.
     # src and dst coordinates are within the transposed terrain space.
     # Returns the list of coordinates along the path, including src and dst.
-    def get_path(self, src, dst, allow_dynamic_obstacles=True):
+    def get_path(self, src, dst, allow_dynamic_obstacles=True, allow_dst_adjacency=False):
         obstacles = [' ']
         if allow_dynamic_obstacles:
             obstacles.append('i')
@@ -90,6 +120,10 @@ class ManualAI():
         terrain = self.active_terrain()
         if terrain is None:
             return []
+
+        # if allow_dst_adjacency:
+            # print('adding dst type %s to OK tile list' % (terrain[dst[0]][dst[1]],))
+            # obstacles.append(terrain[dst[0]][dst[1]])
 
         seen = set()
         queue = [src]
@@ -109,7 +143,7 @@ class ManualAI():
             if pop[1] < len(terrain[0]):
                 neighbors.append((pop[0], pop[1]+1))
             neighbors = [n for n in neighbors if n not in seen]
-            neighbors = [n for n in neighbors if terrain[n[0]][n[1]] in obstacles]
+            neighbors = [n for n in neighbors if (terrain[n[0]][n[1]] in obstacles) or (n==dst and allow_dst_adjacency)]
 
             for n in neighbors:
                 trace[n] = pop
@@ -127,7 +161,8 @@ class ManualAI():
         cursor = dst
         path = []
         while True:
-            path.append(cursor)
+            if cursor != dst or (terrain[dst[0]][dst[1]] in obstacles):
+                path.append(cursor)
             if cursor not in trace:
                 break
             cursor = trace[cursor]
@@ -279,15 +314,28 @@ class ManualAI():
                 state_dict = self.build_state_dict()
             self.agent.request(state_dict, task)
 
+    def pos_dist(self, pos1, pos2):
+        return abs(pos1[0]-pos2[0]) + abs(pos1[1]-pos2[1])
+
     def handle_pathing(self):
         if self.target_pos is None:
             return None
-        if self.ai_player_pos() == self.target_pos:
+        if self.ai_player_pos() == self.target_pos or (self.pos_dist(self.ai_player_pos(), self.target_pos) <= 1 and self.pathing_to_obj):
             # print('done')
-            print('at target pos of %s' % (self.target_pos,))
+            if self.pathing_to_obj:
+                if not self.turning_to_target_obj:
+                    self.turning_to_target_obj = True
+                    face_movement = (self.target_pos[0]-self.ai_player_pos()[0], self.target_pos[1]-self.ai_player_pos()[1])
+                    return face_movement
+                else:
+                    self.turning_to_target_obj = False
+                    print('next to target pos of %s' % (self.target_pos,))
+            else:
+                print('at target pos of %s' % (self.target_pos,))
             self.have_acted = False
             block_htn = False
             self.target_pos = None
+            self.pathing_to_obj = False
             return None
         else:
             print('still pathing to %s' % (self.target_pos,))
@@ -307,11 +355,12 @@ class ManualAI():
             # Path to the target and take the first step
 
             # First, try pathing around the other player
-            moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=False))
+            moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=False, allow_dst_adjacency=self.pathing_to_obj))
+            print('got moves: %s' % moves)
             if len(moves) == 0:
                 # If there's a path through another player, we can
                 # try to shove them out of the way...
-                moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=True))
+                moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=True, allow_dst_adjacency=self.pathing_to_obj))
                 if len(moves) == 0:
                     self.target_pos = None
                     return None
@@ -385,11 +434,11 @@ class ManualAI():
         self.block_htn = False
 
         t = self.active_terrain()
-        '''
         for l in t:
             print(''.join(l))
         print('')
-        '''
+
+        print('coords: %s' % (self.ground_object('onion')))
 
         # Don't wait on a SAI if we know the HTN is blocked from
         # producing one
@@ -408,6 +457,7 @@ class ManualAI():
         '''
 
         inp = input('Enter action: ').strip()
+
         a = inp.split(' ')[0].strip()
         i = {'value': ','.join([x.strip() for x in inp.split(' ')[1:]])}
 
@@ -432,6 +482,29 @@ class ManualAI():
                 return Action.STAY, None
             '''
             return Action.STAY, None
+        elif a == 'MoveToObject':
+            obj = i['value']
+            print('GAME TAKING ACTION: movetoobject %s' % (obj,))
+
+            # Find all the places with matching objects
+            possible_spots = self.ground_object(obj)
+
+            # Iterate through until we find one we can path to
+            found = False
+            for spot in possible_spots:
+                path = self.get_path(self.ai_player_pos(), spot, allow_dynamic_obstacles=True, allow_dst_adjacency=True)
+                if len(path) > 0:
+                    print('chose %s at spot %s' % (obj, spot))
+                    found = True
+                    self.target_pos = spot
+                    self.pathing_to_obj = True
+                    self.block_htn = True
+                    break
+            if not found:
+                print("couldn't find an '%s' object" % (obj))
+
+            return Action.STAY, None
+            
         elif a == "Move":
             print('GAME TAKING ACTION: move %s' % (i,))
             print('moving %s' % i['value'])
