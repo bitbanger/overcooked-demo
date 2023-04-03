@@ -35,6 +35,8 @@ class ManualAI():
 
         self.block_htn = False
 
+        self.first_action = True
+
         self.last_timestep = -1
 
         # self.target_pos = (1, 2)
@@ -92,8 +94,10 @@ class ManualAI():
 
         ground_dict = {
             'onion': 'O',
+            'tomato': 'T',
             'plate': 'D',
             'pot': 'P',
+            'stove': 'P',
             'dropoff': 'S',
         }
 
@@ -394,6 +398,9 @@ class ManualAI():
 
     def action(self, state):
         print('action called')
+        if self.first_action:
+            self.first_action = False
+            return Action.STAY, None
 
         '''
         if state.timestep <= self.last_timestep:
@@ -462,12 +469,13 @@ class ManualAI():
         i = {'value': ','.join([x.strip() for x in inp.split(' ')[1:]])}
 
         print('got the sai')
-        if a == "MoveUp":
+        a = a.lower()
+        if a == "moveup":
             return Direction.NORTH, None
-        elif a == "MoveDown":
+        elif a == "movedown":
             self.pause_ticks = 5
             return Direction.SOUTH, None
-        elif a == "MoveTo":
+        elif a == "moveto":
             print('GAME TAKING ACTION: moveto %s' % (i,))
             (x, y) = [int(e) for e in i['value'].split(',')]
             self.target_pos = (x, y)
@@ -482,7 +490,7 @@ class ManualAI():
                 return Action.STAY, None
             '''
             return Action.STAY, None
-        elif a == 'MoveToObject':
+        elif a == 'movetoobject':
             obj = i['value']
             print('GAME TAKING ACTION: movetoobject %s' % (obj,))
 
@@ -490,9 +498,12 @@ class ManualAI():
             possible_spots = self.ground_object(obj)
 
             # Iterate through until we find one we can path to
+
+            # Re-iterate, if there are no spots, allowing
+            # dynamic obstacles
             found = False
             for spot in possible_spots:
-                path = self.get_path(self.ai_player_pos(), spot, allow_dynamic_obstacles=True, allow_dst_adjacency=True)
+                path = self.get_path(self.ai_player_pos(), spot, allow_dynamic_obstacles=False, allow_dst_adjacency=True)
                 if len(path) > 0:
                     print('chose %s at spot %s' % (obj, spot))
                     found = True
@@ -501,21 +512,31 @@ class ManualAI():
                     self.block_htn = True
                     break
             if not found:
+                for spot in possible_spots:
+                    path = self.get_path(self.ai_player_pos(), spot, allow_dynamic_obstacles=True, allow_dst_adjacency=True)
+                    if len(path) > 0:
+                        print('chose %s at spot %s' % (obj, spot))
+                        found = True
+                        self.target_pos = spot
+                        self.pathing_to_obj = True
+                        self.block_htn = True
+                        break
+            if not found:
                 print("couldn't find an '%s' object" % (obj))
 
             return Action.STAY, None
             
-        elif a == "Move":
+        elif a == "move":
             print('GAME TAKING ACTION: move %s' % (i,))
             print('moving %s' % i['value'])
             (x, y) = [int(e) for e in i['value'].split(',')]
             self.have_acted = True
             return (x, y), None
-        elif a == "Interact":
+        elif a == "interactwithobject":
             print('GAME TAKING ACTION: interact')
             self.have_acted = True
             return Action.INTERACT, None
-        elif a == "Wait":
+        elif a == "wait":
             print('GAME TAKING ACTION: wait')
             return Action.STAY, None
         else:
