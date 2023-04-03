@@ -1,0 +1,3 @@
+[submodule "server/htn-parser"]
+	path = server/htn-parser
+	url = git@github.com:Teachable-AI-Lab-TAIL/htn-parser.git
