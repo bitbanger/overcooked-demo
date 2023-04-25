@@ -250,6 +250,7 @@ def  _leave_game(user_id):
             pass
         elif was_active and not game.is_empty():
             # Active -> Waiting
+            print('Active -> Waiting')
             game.deactivate()
             
             

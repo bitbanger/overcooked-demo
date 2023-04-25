@@ -90,10 +90,26 @@ class ValAI():
 	def ai_player_pos(self):
 		return self.state.players[1].position
 
+	def active_terrain(self, tries=10):
+		nones = 0
+		t = None
+		for _ in range(tries):
+			t = self.active_terrain_helper()
+			if t is None:
+				nones += 1
+				sleep(0.5)
+				continue
+			else:
+				break
+		if nones > 0:
+			print('in active_terrain, game state was inactive %d / %d times' % (nones, tries))
+
+		return t
+
 	# Returns the game terrain grid, populated with
 	# current player positions (and, maybe one day,
 	# other "dynamic obstacles"?)
-	def active_terrain(self):
+	def active_terrain_helper(self):
 		if not self.game._is_active:
 			return None
 
@@ -114,9 +130,25 @@ class ValAI():
 
 		return terrain
 
+	def ground_object(self, obj_name, tries=10):
+		nones = 0
+		t = None
+		for _ in range(tries):
+			t = self.ground_object_helper(obj_name)
+			if t is None:
+				nones += 1
+				sleep(0.5)
+				continue
+			else:
+				break
+		if nones > 0:
+			print('in ground_object, game state was inactive %d / %d times' % (nones, tries))
+
+		return t
+
 	# Takes an object name and returns a list of coordinates
 	# for all matching objects in the game world
-	def ground_object(self, obj_name):
+	def ground_object_helper(self, obj_name):
 		if not self.game._is_active:
 			return []
 
@@ -242,12 +274,8 @@ class ValAI():
 	def build_state_dict(self):
 		state = dict()
 
-		for _ in range(10):
-			t = self.active_terrain()
-			if t is not None:
-				break
-			else:
-				sleep(0.5)
+		nones = 0
+		t = self.active_terrain()
 		if PRINT_TERRAIN:
 			for l in t:
 				print(''.join(l))

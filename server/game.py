@@ -431,7 +431,8 @@ class OvercookedGame(Game):
         
 
     def _curr_game_over(self):
-        return time() - self.start_time >= self.max_time
+        return False
+        # return time() - self.start_time >= self.max_time
 
 
     def needs_reset(self):
