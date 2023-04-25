@@ -6,34 +6,48 @@ from time import sleep
 
 from overcooked_ai_py.mdp.actions import Action, Direction
 
-from tutorenvs.overcooked import OvercookedTutorEnv
+# from tutorenvs.overcooked import OvercookedTutorEnv
 
-from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
-from HTNAgent.tact_agent import TACTAgent
+# from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
+# from HTNAgent.tact_agent import TACTAgent
 
 import importlib
 import sys
+import select
+import nltk
 
 import openai
 import logging
 openai.util.logger.setLevel(logging.WARNING)
 
+import random
+
 PRINT_TERRAIN = False
+SESS_ID = 'demo_logs/' + str(random.randint(1,10000000))
 PRINT_STATE = False
+
+def wait_input():
+	inp, onp, enp = select.select([sys.stdin], [], [], 5)
+	if inp:
+		inp = sys.stdin.readline().strip()
+		return inp
+	else:
+		return None
 
 class ValAI():
 	def __init__(self, game):
 		self.dirty_bit_ss = False
 		self.dirty_bit_ihtn = False
 
-		self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,interactWithObject() - press the space button to interact with whatever you're facing")
+		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,interactWithObject() - press the space button to interact with whatever you're facing")
+		self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,pressSpace() - press the space button to interact with whatever you're facing")
 		self.inp_queue = []
 
 		self.have_acted = False
 		self.game = game
 		self.action_tick = 0
 		self.state = None
-		self.env = OvercookedTutorEnv()
+		# self.env = OvercookedTutorEnv()
 		# self.agent = TACTAgent(actions=overcooked_actions, methods=overcooked_methods, relations=[], env=self.env)
 
 		self.waiting_player_pos = None
@@ -48,6 +62,8 @@ class ValAI():
 		self.block_htn = False
 
 		self.first_action = True
+
+		self.need_inp = True
 
 		self.last_timestep = -1
 
@@ -106,21 +122,41 @@ class ValAI():
 
 		ground_dict = {
 			'onion': 'O',
+			'onions': 'O',
 			'tomato': 'T',
+			'tomatoes': 'T',
+			'tomatos': 'T',
 			'plate': 'D',
+			'plates': 'D',
 			'pot': 'P',
+			'pots': 'P',
 			'stove': 'P',
+			'stoves': 'P',
+			'oven': 'P',
+			'ovens': 'P',
 			'dropoff': 'S',
+			'dropoffs': 'S',
+			'drop-off': 'S',
+			'drop-offs': 'S',
 		}
 
+		final_name = obj_name.lower()
 		if obj_name.lower() not in ground_dict:
-			return []
+			# print('%s not in ground_dict' % (obj_name.lower()))
+			names = [k for k in obj_name.keys()]
+			best_name = min(names, key=lambda k: nltk.edit_distance(k, obj_name.lower()))
+			if nltk.edit_distance(best_name, obj_name.lower()) < 3:
+				final_name = best_name
+			else:
+				return []
+
+		# print('final name: %s' % (final_name,))
 
 		coords = []
 		terr = self.active_terrain()
 		for i in range(len(terr)):
 			for j in range(len(terr[0])):
-				if ground_dict[obj_name.lower()] == terr[i][j]:
+				if ground_dict[final_name] == terr[i][j]:
 					coords.append((i, j))
 
 		return coords
@@ -206,7 +242,12 @@ class ValAI():
 	def build_state_dict(self):
 		state = dict()
 
-		t = self.active_terrain()
+		for _ in range(10):
+			t = self.active_terrain()
+			if t is not None:
+				break
+			else:
+				sleep(0.5)
 		if PRINT_TERRAIN:
 			for l in t:
 				print(''.join(l))
@@ -239,7 +280,7 @@ class ValAI():
 			(x, y) = player['position']
 			(dx, dy) = player['orientation']
 			(tx, ty) = (x+dx, y+dy)
-			print('player %d is at (%d, %d) and is facing (%d, %d)' % (i, x, y, dx, dy))
+			# print('player %d is at (%d, %d) and is facing (%d, %d)' % (i, x, y, dx, dy))
 			state['p%d_targeting' % i] = {'player': 'p%d' % i, 'targeted': '%d,%d' % (tx, ty)}
 
 		# Add holding predicates for both players
@@ -286,7 +327,7 @@ class ValAI():
 
 	def send_state(self):
 		while True:
-			print('send_state looped')
+			# print('send_state looped')
 			sleep(0.1)
 			# if self.action_tick > 0:
 				# continue
@@ -300,16 +341,16 @@ class ValAI():
 			state_dict = {}
 			if self.state is not None:
 				# state_dict = {'p1_pos': {'id': 'p1_pos', 'value': ','.join([str(e) for e in self.state.players[0].position])}}
-				print('building')
+				# print('building')
 				state_dict = self.build_state_dict()
-				print('done')
-			print('sending state %s' % (state_dict,))
-			self.env.state_queue_w.send(state_dict)
-			print('sent')
+				# print('done')
+			# print('sending state %s' % (state_dict,))
+			# self.env.state_queue_w.send(state_dict)
+			# print('sent')
 
 	def iterate_htn(self):
 		while True:
-			print('iterate looped')
+			# print('iterate looped')
 			task = 'make_onion_soup'
 			sleep(0.1)
 
@@ -336,7 +377,8 @@ class ValAI():
 	def state_diff(self, state1, state2):
 		for k in state1.keys():
 			if state1[k] != state2[k]:
-				print('%s differs: %s -> %s' % (k, state1[k], state2[k]))
+				# print('%s differs: %s -> %s' % (k, state1[k], state2[k]))
+				pass
 
 	def handle_pathing(self):
 		if self.target_pos is None:
@@ -350,34 +392,34 @@ class ValAI():
 					return face_movement
 				else:
 					self.turning_to_target_obj = False
-					print('next to target pos of %s' % (self.target_pos,))
-			else:
-				print('at target pos of %s' % (self.target_pos,))
+					# print('next to target pos of %s' % (self.target_pos,))
+			# else:
+				# print('at target pos of %s' % (self.target_pos,))
 			self.have_acted = False
 			block_htn = False
 			self.target_pos = None
 			self.pathing_to_obj = False
 			return None
 		else:
-			print('still pathing to %s' % (self.target_pos,))
-			print('	 currently at %s' % (self.ai_player_pos(),))
+			# print('still pathing to %s' % (self.target_pos,))
+			# print('	 currently at %s' % (self.ai_player_pos(),))
 
 			# Check to see if we just moved for the other
 			# player. If we did, and they haven't moved
 			# again yet, we'll keep waiting.
 			if self.waiting_player_pos is not None:
 				if self.waiting_player_pos == self.state.players[0].position:
-					print('just got out of your way; waiting for you to move')
+					# print('just got out of your way; waiting for you to move')
 					return Action.STAY
 				else:
-					print("good, you moved! I'm gonna keep going now")
+					# print("good, you moved! I'm gonna keep going now")
 					self.waiting_player_pos = None
 
 			# Path to the target and take the first step
 
 			# First, try pathing around the other player
 			moves = self.path_to_move_actions(self.get_path(self.ai_player_pos(), self.target_pos, allow_dynamic_obstacles=False, allow_dst_adjacency=self.pathing_to_obj))
-			print('got moves: %s' % moves)
+			# print('got moves: %s' % moves)
 			if len(moves) == 0:
 				# If there's a path through another player, we can
 				# try to shove them out of the way...
@@ -388,12 +430,12 @@ class ValAI():
 
 			# Check that the next step is possible
 			move = moves[0]
-			print('move is %s' % (move,))
+			# print('move is %s' % (move,))
 			terrain = self.active_terrain()
 			(x, y) = self.ai_player_pos()
 			(dx, dy) = move
 			target = (x+dx, y+dy)
-			print('	 trying to go to %s' % (target,))
+			# print('	 trying to go to %s' % (target,))
 			if terrain[target[0]][target[1]] == ' ':
 				return move
 			else:
@@ -406,7 +448,7 @@ class ValAI():
 					(face_x, face_y) = self.state.players[0].orientation
 					their_target = (their_x+face_x, their_y+face_y)
 					if their_target == self.ai_player_pos():
-						print('moving out of your way')
+						# print('moving out of your way')
 						self.waiting_player_pos = (their_x, their_y)
 						return (face_x, face_y)
 
@@ -414,7 +456,7 @@ class ValAI():
 				return Action.STAY
 
 	def action(self, state):
-		print('action called')
+		# print('action called')
 		if self.first_action:
 			self.first_action = False
 			return Action.STAY, None
@@ -432,7 +474,7 @@ class ValAI():
 		if self.action_tick > 0:
 			return Action.STAY, None
 
-		print('htn_ai setting state to %s' % state.to_dict())
+		# print('htn_ai setting state to %s' % state.to_dict())
 		self.state = state.deepcopy()
 		self.dirty_bit_ss = True
 		self.dirty_bit_ihtn = True
@@ -443,13 +485,13 @@ class ValAI():
 
 		# sleep(0.5)
 		# print('timestep is %s' % (state.to_dict()['timestep']))
-		print('got state p1 pos %s' % (state.players[1].position,))
+		# print('got state p1 pos %s' % (state.players[1].position,))
 		self.block_htn = True
 		# return Action.STAY, None
 
 		move = self.handle_pathing()
 		if move is not None:
-			print('in 1, got move %s' % (move,))
+			# print('in 1, got move %s' % (move,))
 			self.have_acted = True
 			return move, None
 
@@ -457,12 +499,12 @@ class ValAI():
 		# self.env.state_queue_w.send({"pos": "1,1"})
 		self.block_htn = False
 
-		t = self.active_terrain()
-		for l in t:
-			print(''.join(l))
-		print('')
+		# t = self.active_terrain()
+		# for l in t:
+			# print(''.join(l))
+		# print('')
 
-		print('coords: %s' % (self.ground_object('onion')))
+		# print('coords: %s' % (self.ground_object('onion')))
 
 		# Don't wait on a SAI if we know the HTN is blocked from
 		# producing one
@@ -482,25 +524,63 @@ class ValAI():
 
 		sleep(1)
 		if self.collect_state_after_action:
-			print('adding state %s' % (self.build_state_dict(),))
-			print('diff: ', end='')
-			self.state_diff(self.state_snapshots[-1], self.build_state_dict())
+			# print('adding state %s' % (self.build_state_dict(),))
+			# print('diff: ', end='')
+			# self.state_diff(self.state_snapshots[-1], self.build_state_dict())
 			self.collect_state_after_action = False
 			self.state_snapshots.append(self.build_state_dict())
 
 		# inp = input('Enter action: ').strip()
 		if len(self.inp_queue) == 1 and self.inp_queue[0] == 'SENTINEL':
 			# print('%d states for %d actions' % (len(self.state_snapshots), self.last_inp_queue_size))
-			for i in range(len(self.old_inp_queue)-1):
-				print('ACTION: %s' % (self.old_inp_queue[i],))
+			# for i in range(len(self.old_inp_queue)-1):
+				# print('ACTION: %s' % (self.old_inp_queue[i],))
 				# print('\tSTATE: %s' % (self.state_snapshots[i+1],))
-				self.state_diff(self.state_snapshots[i], self.state_snapshots[i+1])
+				# self.state_diff(self.state_snapshots[i], self.state_snapshots[i+1])
 			self.inp_queue = []
 			self.old_inp_queue = []
 			self.state_snapshots = []
 		if len(self.inp_queue) == 0:
-			inp = input('Enter action: ').strip()
-			self.inp_queue = self.itl.process_instruction(inp) + ['SENTINEL']
+			# inp = input('Enter action: ').strip()
+			if self.need_inp:
+				print('Enter action: ', end='')
+				self.need_inp = False
+			# inp, onp, enp = select.select([sys.stdin], [], [], 5)
+			# if inp:
+				# self.need_inp = True
+				# inp = sys.stdin.readline().strip()
+			# else:
+				# return Action.STAY, None
+			inp = wait_input()
+			sleep(0.5)
+			if inp:
+				self.need_inp = True
+			else:
+				# print('staying')
+				return Action.STAY, None
+			with open(SESS_ID, 'a+') as f:
+				f.write('Enter action: ')
+			with open(SESS_ID, 'a+') as f:
+				f.write(inp + '\n')
+
+			def clarify_hook2(ua):
+				# inp = input('What do you mean by "%s"?: ' % (ua,))
+				print('What do you mean by "%s"?: ' % (ua,), end='')
+				inp = wait_input()
+				while True:
+					if inp is None:
+						inp = wait_input()
+					else:
+						break
+				with open(SESS_ID, 'a+') as f:
+					f.write('What do you mean by "%s"?: ' % (ua,))
+					f.write(inp + '\n')
+				with open('speech_outf', 'a+') as f:
+					f.write('What do you mean by "%s"?: \n' % (ua,))
+
+				return inp
+
+			self.inp_queue = self.itl.process_instruction(inp, clarify_hook=clarify_hook2) + ['SENTINEL']
 			self.old_inp_queue = self.inp_queue[:]
 			self.last_inp_queue_size = len(self.inp_queue)-1
 			self.state_snapshots.append(self.build_state_dict())
@@ -508,13 +588,14 @@ class ValAI():
 		sleep(1.5)
 		inp = self.inp_queue[0]
 		self.inp_queue = self.inp_queue[1:]
-		print('PULLING %s from inp_queue' % (inp,))
+		# print('PULLING %s from inp_queue' % (inp,))
 
 
+		s = None
 		a = inp.split(' ')[0].strip()
 		i = {'value': ','.join([x.strip() for x in inp.split(' ')[1:]])}
 
-		print('got the sai')
+		# print('got the sai')
 		a = a.lower()
 		self.collect_state_after_action = True
 		if a == "moveup":
@@ -523,7 +604,7 @@ class ValAI():
 			self.pause_ticks = 5
 			return Direction.SOUTH, None
 		elif a == "moveto":
-			print('GAME TAKING ACTION: moveto %s' % (i,))
+			# print('GAME TAKING ACTION: moveto %s' % (i,))
 			(x, y) = [int(e) for e in i['value'].split(',')]
 			self.target_pos = (x, y)
 			self.block_htn = True
@@ -539,7 +620,7 @@ class ValAI():
 			return Action.STAY, None
 		elif a == 'movetoobject':
 			obj = i['value']
-			print('GAME TAKING ACTION: movetoobject %s' % (obj,))
+			# print('GAME TAKING ACTION: movetoobject %s' % (obj,))
 
 			# Find all the places with matching objects
 			possible_spots = self.ground_object(obj)
@@ -552,7 +633,7 @@ class ValAI():
 			for spot in possible_spots:
 				path = self.get_path(self.ai_player_pos(), spot, allow_dynamic_obstacles=False, allow_dst_adjacency=True)
 				if len(path) > 0:
-					print('chose %s at spot %s' % (obj, spot))
+					# print('chose %s at spot %s' % (obj, spot))
 					found = True
 					self.target_pos = spot
 					self.pathing_to_obj = True
@@ -562,7 +643,7 @@ class ValAI():
 				for spot in possible_spots:
 					path = self.get_path(self.ai_player_pos(), spot, allow_dynamic_obstacles=True, allow_dst_adjacency=True)
 					if len(path) > 0:
-						print('chose %s at spot %s' % (obj, spot))
+						# print('chose %s at spot %s' % (obj, spot))
 						found = True
 						self.target_pos = spot
 						self.pathing_to_obj = True
@@ -574,20 +655,20 @@ class ValAI():
 			return Action.STAY, None
 			
 		elif a == "move":
-			print('GAME TAKING ACTION: move %s' % (i,))
-			print('moving %s' % i['value'])
+			# print('GAME TAKING ACTION: move %s' % (i,))
+			# print('moving %s' % i['value'])
 			(x, y) = [int(e) for e in i['value'].split(',')]
 			self.have_acted = True
 			return (x, y), None
-		elif a == "interactwithobject":
-			print('GAME TAKING ACTION: interact')
+		elif a == "interactwithobject" or a == "pressspace":
+			# print('GAME TAKING ACTION: interact')
 			self.have_acted = True
 			return Action.INTERACT, None
 		elif a == "wait":
-			print('GAME TAKING ACTION: wait')
+			# print('GAME TAKING ACTION: wait')
 			return Action.STAY, None
 		else:
-			print("unknown SAI %s, %s, %s" % (s, a, i))
+			# print("unknown SAI %s, %s, %s" % (s, a, i))
 			self.collect_state_after_action = False
 			return Action.STAY, None
 

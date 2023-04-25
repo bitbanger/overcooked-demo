@@ -564,4 +564,5 @@ if __name__ == '__main__':
     atexit.register(on_exit)
 
     # https://localhost:80 is external facing address regardless of build environment
+    print('ready')
     socketio.run(app, host=host, port=port, log_output=app.config['DEBUG'])

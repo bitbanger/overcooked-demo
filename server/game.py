@@ -10,8 +10,8 @@ from human_aware_rl.rllib.rllib import load_agent
 import random, os, pickle, json
 import ray
 
-from htn_ai import HTNAI
-from manual_ai import ManualAI
+# from htn_ai import HTNAI
+# from manual_ai import ManualAI
 from val_ai import ValAI
 
 # Relative path to where all static pre-trained agents are stored on server
@@ -386,6 +386,9 @@ class OvercookedGame(Game):
     """
 
     def __init__(self, layouts=["cramped_room"], mdp_params={}, num_players=2, gameTime=30, playerZero='human', playerOne='human', showPotential=False, randomized=False, **kwargs):
+        playerOne = 'StayAI'
+        gameTime = 9998
+        layouts=["asymmetric_advantages_tomato"]
         super(OvercookedGame, self).__init__(**kwargs)
         self.show_potential = showPotential
         self.mdp_params = mdp_params
@@ -458,11 +461,11 @@ class OvercookedGame(Game):
         while self._is_active:
             state = queue.get()
             state = self.state
-            print('GAME publishing state %s' % (state.to_dict()))
+            # print('GAME publishing state %s' % (state.to_dict()))
             npc_action, _ = policy.action(state)
-            print('got npc_action %s' % (npc_action,))
+            # print('got npc_action %s' % (npc_action,))
             super(OvercookedGame, self).enqueue_action(policy_id, npc_action)
-        print('no longer active')
+        # print('no longer active')
 
 
     def is_full(self):
@@ -496,7 +499,7 @@ class OvercookedGame(Game):
         for i in range(len(self.players)):
             try:
                 joint_action[i] = self.pending_actions[i].get(block=False)
-                print('updated action %s from player %d' % (joint_action[i], i))
+                # print('updated action %s from player %d' % (joint_action[i], i))
             except Empty:
                 pass
         
@@ -665,7 +668,8 @@ class OvercookedPsiturk(OvercookedGame):
             "player_0_id" : self.players[0],
             "player_1_id" : self.players[1],
             "player_0_is_human" : self.players[0] in self.human_players,
-            "player_1_is_human" : self.players[1] in self.human_players
+            # "player_1_is_human" : self.players[1] in self.human_players
+            "player_1_is_human": False
         }
 
         self.trajectory.append(transition)
