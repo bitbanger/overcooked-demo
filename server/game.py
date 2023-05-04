@@ -112,7 +112,8 @@ class Game(ABC):
         """
         Number of milliseconds to pause game on reset
         """
-        return 3000
+        # return 3000
+        return 10000
 
     def apply_actions(self):
         """
@@ -146,6 +147,7 @@ class Game(ABC):
         """
         Restarts the game while keeping all active players by resetting game stats and temporarily disabling `tick`
         """
+        print('got reset')
         if not self.is_active:
             raise ValueError("Inactive Games cannot be reset")
         if self.is_finished():
@@ -566,6 +568,10 @@ class OvercookedGame(Game):
             t.start()
 
     def deactivate(self):
+        print('deactivate called')
+        x = 1
+        x -= 1
+        print(3/x)
         super(OvercookedGame, self).deactivate()
         # Ensure the background consumers do not hang
         for npc_policy in self.npc_policies:

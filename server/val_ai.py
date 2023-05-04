@@ -40,7 +40,9 @@ class ValAI():
 		self.dirty_bit_ihtn = False
 
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,interactWithObject() - press the space button to interact with whatever you're facing")
-		self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,pressSpace() - press the space button to interact with whatever you're facing")
+		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,pressSpace() - press the space button to interact with whatever you're facing")
+		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
+		self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
 		self.inp_queue = []
 
 		self.have_acted = False
@@ -571,7 +573,9 @@ class ValAI():
 		if len(self.inp_queue) == 0:
 			# inp = input('Enter action: ').strip()
 			if self.need_inp:
-				print('Enter action: ', end='')
+				# self.itl.save('val_model.pkl')
+				print('VAL: What should I do?')
+				print('User: ', end='')
 				self.need_inp = False
 			# inp, onp, enp = select.select([sys.stdin], [], [], 5)
 			# if inp:
@@ -587,13 +591,15 @@ class ValAI():
 				# print('staying')
 				return Action.STAY, None
 			with open(SESS_ID, 'a+') as f:
-				f.write('Enter action: ')
+				# f.write('Enter action: ')
+				f.write('VAL: What should I do?\n')
 			with open(SESS_ID, 'a+') as f:
-				f.write(inp + '\n')
+				f.write('User: ' + inp + '\n')
 
 			def clarify_hook2(ua):
 				# inp = input('What do you mean by "%s"?: ' % (ua,))
-				print('What do you mean by "%s"?: ' % (ua,), end='')
+				print('VAL: What do you mean by "%s"?' % (ua,))
+				print('User: ', end='')
 				inp = wait_input()
 				while True:
 					if inp is None:
@@ -601,10 +607,10 @@ class ValAI():
 					else:
 						break
 				with open(SESS_ID, 'a+') as f:
-					f.write('What do you mean by "%s"?: ' % (ua,))
-					f.write(inp + '\n')
+					f.write('VAL: What do you mean by "%s"?\n' % (ua,))
+					f.write('User: ' + inp + '\n')
 				with open('speech_outf', 'a+') as f:
-					f.write('What do you mean by "%s"?: \n' % (ua,))
+					f.write('What do you mean by "%s"?\n' % (ua,))
 
 				return inp
 
@@ -631,7 +637,7 @@ class ValAI():
 		elif a == "movedown":
 			self.pause_ticks = 5
 			return Direction.SOUTH, None
-		elif a == "moveto":
+		elif a == "movetoloc":
 			# print('GAME TAKING ACTION: moveto %s' % (i,))
 			(x, y) = [int(e) for e in i['value'].split(',')]
 			self.target_pos = (x, y)
@@ -646,7 +652,7 @@ class ValAI():
 				return Action.STAY, None
 			'''
 			return Action.STAY, None
-		elif a == 'movetoobject':
+		elif a == 'moveto':
 			obj = i['value']
 			# print('GAME TAKING ACTION: movetoobject %s' % (obj,))
 

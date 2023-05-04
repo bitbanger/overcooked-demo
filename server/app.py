@@ -250,7 +250,7 @@ def  _leave_game(user_id):
             pass
         elif was_active and not game.is_empty():
             # Active -> Waiting
-            print('Active -> Waiting')
+            # print('Active -> Waiting')
             game.deactivate()
             
             
@@ -503,6 +503,7 @@ def on_disconnect():
     user_id = request.sid
     if user_id not in USERS:
         return
+    # print('user_id %s is leaving' % (user_id,))
     with USERS[user_id]:
         _leave_game(user_id)
 
@@ -565,5 +566,5 @@ if __name__ == '__main__':
     atexit.register(on_exit)
 
     # https://localhost:80 is external facing address regardless of build environment
-    print('ready')
+    # print('ready')
     socketio.run(app, host=host, port=port, log_output=app.config['DEBUG'])
