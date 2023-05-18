@@ -1,0 +1,2 @@
+moveTo,interact
+Head to the onions. Move to the stove. Interact, uh, with the stove. Yeah. Then run back to the onions.

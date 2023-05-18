@@ -1,0 +1,9 @@
+You're in an environment where these operations are available to you: %s
+
+Additionally, these objects are in the environment: %s
+
+Someone tells you to "%s". Which action corresponds to this?
+
+%s
+
+Please respond with a single letter, and start your answer with a "[".

@@ -1,0 +1,5 @@
+moveHandToSurface - place your hand near a surface,moveHandToObject - place your hand near an object,resetHandPosition - move your hand back to its original position,openHand - open the grippers on your hand,closeHand - close the grippers on your hand
+Move the pepper to the counter.
+Pick up the pepper and put it on the counter
+open your claw, move it to the pepper, close it, and bring it back to the starting position
+move your hand to the counter, open your hand, pull your hand back, and close it

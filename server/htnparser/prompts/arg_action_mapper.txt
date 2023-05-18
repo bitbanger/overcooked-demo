@@ -1,0 +1,62 @@
+Known actions:
+	FIND(<arg1>) - locate an object
+	MOVETO(<arg1>) - move yourself to a location
+	EAT(<arg1>) - consume a food item for nourishment
+
+Input actions:
+	a1. find(school) - ["find the school"]
+	a2. draw(picture) - ["draw a picture"]
+	a3. goTo(school) - ["go to it"]
+	a4. eat(orange) - ["eat an orange"]
+
+Best known single action for each input action:
+	a1. FIND(school)
+	a2. no good action found
+	a3. MOVETO(school)
+	a4. EAT(orange)
+
+=======
+
+Known actions:
+	SEND(<arg1>) - send an object somewhere
+	MOVETO(<arg1>) - move yourself to a location
+
+Input actions:
+	a1. send(letter) - ["send a letter"]
+	a2. play(backyard) - ["play there"]
+	a3. runTo(backyard) - ["run to the backyard"]
+	a4. goAway() - ["go away"]
+
+Best known single action for each input action:
+	a1. SEND(letter)
+	a2. no good action found
+	a3. MOVETO(backyard)
+	a4. no good action found
+
+=======
+
+Known actions:
+	TRANSPORT(<arg1>, <arg2>) - move an object to a location
+	FIRE(<arg1>) - terminate an employee's employment
+	DECRYPT(<arg1>) - decode an encrypted message
+	PLACE(<arg1>, <arg2>) - set an object down at a location
+
+Input actions:
+	a1. patrol(hallway) - ["patrol the hallway"]
+	a2. bringTo(pillow, couch) - ["bring the pillow to the couch"]
+	a3. putOn(pillow, couch) - ["put it on the couch"]
+
+Best known single action for each input action:
+	a1. no good action found
+	a2. TRANSPORT(pillow, couch)
+	a3. PLACE(pillow, couch)
+
+=======
+
+Known actions:
+%s
+
+Input actions:
+%s
+
+Best known single action for each input action:

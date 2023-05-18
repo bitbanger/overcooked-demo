@@ -1,0 +1,58 @@
+Known actions:
+	FIND
+	MOVETO
+	EAT
+
+Input actions:
+	a1. find(school) - ["find the school"]
+	a2. go(school) - ["go to it"]
+	a3. eat(orange) - ["eat an orange"]
+	a4. draw(picture) - ["draw a picture"]
+
+Best known actions for each input action:
+	a1. FIND
+	a2. MOVETO
+	a3. EAT
+	a4. no good action found
+
+=======
+
+Known actions:
+	SEND
+	MOVETO
+
+Input actions:
+	a1. send(letter) - ["send a letter"]
+	a2. run(backyard) - ["run to the backyard"]
+	a3. play(backyard) - ["play there"]
+
+Best known actions for each input action:
+	a1. SEND
+	a2. MOVETO
+	a3. no good action found
+
+=======
+
+Known actions:
+	TRANSPORT
+	PLACE
+
+Input actions:
+	a1. bring(pillow, couch) - ["bring the pillow to the couch"]
+	a2. put(pillow, couch) - ["put it on the couch"]
+	a3. patrol(hallway) - ["patrol the hallway"]
+
+Best known actions for each input action:
+	a1. TRANSPORT
+	a2. PLACE
+	a3. no good action found
+
+=======
+
+Known actions:
+%s
+
+Input actions:
+%s
+
+Best known actions for each input action:

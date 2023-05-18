@@ -1,0 +1,7 @@
+moveHandToSurface(<arg1>) - place your hand near a surface,moveHandToObject(<arg1>) - place your hand near an object,resetHandPosition() - move your hand back to its original position,openHand() - open the grippers on your hand,closeHand() - close the grippers on your hand
+Move the pepper to the counter, then put it away and clean the counter.
+Pick up the pepper and put it on the counter
+open your claw, move it to the pepper, close it, and bring it back to the original position
+move your hand to the counter, open your hand, pull your hand back, and close it
+move the pepper to the cabinet
+put away the salt, please

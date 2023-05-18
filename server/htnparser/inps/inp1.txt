@@ -1,0 +1,2 @@
+moveTo,interact
+OK, so, first you need to go to the stove. Then you need to interact with it. Then go to the onions and interact with those.

@@ -1,0 +1,44 @@
+***
+We're going to do an iterative process together. At each iteration, I'll give you three things: 1. a list of actions you may take and their arguments; 2. a list of objects in the environment, including mental/conceptual items; and 3. a snippet of text provided by a user.
+
+Your job will be to analyze the snippet of text and determine two things: a single action from the list of actions in input item 1, and a set of arguments to the action taken from input item 2. You should never pick more than one action, and you should always produce the correct number of arguments to that action, even if the user's text snippet doesn't have the correct number of arguments itself.
+
+If you don't think there is a suitable item from the list of actions in input item 1, you may use the action "noGoodAction()" instead. However, you may then suggest a good name for the action.
+
+For example, if I gave the following input:
+
+1. moveTo(<location>), pressSpace()
+2. objects: [pot1, onion1, onion2, dropoff1] & mental values: []
+3. "go to a piece of cookware"
+
+You would say: moveTo(pot1)
+
+If I gave this input, though:
+
+1. moveTo(<location>), pressSpace()
+2. objects: [pot1, onion1, onion2, dropoff1] & mental values: []
+3. "eat an onion"
+
+You would say: noGoodAction(onion1), but I would call it eat(onion1)
+
+There's no need to respond to me with any other words. Let's start right away with the following input:
+
+1. moveTo(<location>), pressSpace(), get(<arg1>)
+2. objects: [pot1, onion1, tomato1, dropoff1, plate1] & mental values: []
+3. "put the onion in the pot"
+
+(Remember that you may only select ONE action. If you see an unknown action, you must NOT respond with multiple actions to try and define it; you MUST select noGoodAction. If your response has multiple actions in it, you will be in serious trouble.)
+***
+get(onion1), moveTo(pot1)
+***
+You are in serious trouble.
+***
+I apologize for my mistake. Based on the user's input "put the onion in the pot", the correct action would be put(<arg1>, <arg2>), where <arg1> is the onion1 object and <arg2> is the pot1 object. Therefore, the correct response would be put(onion1, pot1).
+***
+But that isn't in the list of actions you were given.
+***
+I apologize for my mistake again. In this case, I would choose the action noGoodAction(), as there is no suitable action in the given list to fulfill the user's request to "put the onion in the pot", but I would call it put(onion1, pot1)
+***
+Thank you. Let's continue:
+
+%s

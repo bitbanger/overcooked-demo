@@ -1,0 +1,1 @@
+The user wants to get an onion, so the appropriate action would be to move to the onion object. Therefore, I chose the `moveToObject` action with the argument `onion`.
