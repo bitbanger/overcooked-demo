@@ -1,0 +1,3 @@
+get(pot)
+put(pot, tomato)
+pressSpace()

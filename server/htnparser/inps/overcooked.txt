@@ -1,0 +1,6 @@
+moveToObject(<object>) - move over to an object,interactWithObject() - press the space button to interact with whatever you're facing
+Please cook an onion
+Put an onion in the pot and interact with it
+Get an onion and bring it to the pot
+Walk over to the onion and interact with it
+Go to the pot and interact with it

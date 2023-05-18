@@ -1,0 +1,2 @@
+moveHandToSurface - place your hand near a surface,moveHandToObject - place your hand near an object,resetHandPosition - move your hand back to its original position,openHand - open the grippers on your hand,closeHand - close the grippers on your hand
+Please pick up the green pepper.

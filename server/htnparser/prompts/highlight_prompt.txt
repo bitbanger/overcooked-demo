@@ -1,0 +1,59 @@
+KNOWN ACTIONS:
+1. EAT
+2. MOVETO
+3. FIND
+-------
+User input: "To get the job done, first you need to find the school and then go to it. Then, you need to eat an orange. Finally, you should draw a picture."
+Action verbs in user input: ("find the school") - find, ("go to it") - go, ("eat an orange") - eat, ("draw a picture") - draw
+Decomposed actions:
+	a1. "<find> [the school]" - find(school)
+	a2. "<go> to [it]" - go(school)
+	a3. "<eat> [an orange]" - eat(orange)
+	a4. "<draw> [a picture]" - draw(picture)
+Closest known actions:
+	a1. find(school) -> FIND(school)
+	a2. go(school) -> MOVETO(school)
+	a3. eat(orange) -> EAT(orange)
+	a4. draw(picture) -> No known action found for "draw"
+
+===================
+
+KNOWN ACTIONS:
+1. SEND
+2. MOVETO
+-------
+User input: "First, please send a letter. Then, run to the backyard and play there."
+Action verbs in user input: ("send a letter") - send, ("run to the backyard") - run, ("play there") - play
+Decomposed actions:
+	a1. "<send> [a letter]" - send(letter)
+	a2. "<run> to [the backyard]" - run(backyard)
+	a3. "<play> [there]" - play(backyard)
+Closest known actions:
+	a1. send(letter) -> SEND(letter)
+	a2. run(backyard) -> MOVETO(backyard)
+	a3. play(backyard) -> No known action found for "play"
+
+===================
+
+KNOWN ACTIONS:
+1. TRANSPORT
+2. PLACE
+-------
+User input: "Bring the pillow to the couch. Then put it on the couch. Then patrol the hallway."
+Action verbs in user input: ("bring the pillow to the couch") - bring, ("put it on the couch") - put, "patrol the hallway") - play
+Decomposed actions:
+	a1. "<bring> [the pillow] to [the couch]" - bring(pillow, couch)
+	a2. "<put> [it] on [the couch]" - put(pillow, couch)
+	a3. "<patrol> [the hallway]" - patrol(hallway)
+Closest known actions:
+	a1. bring(pillow, couch) -> TRANSPORT(pillow, couch)
+	a2. put(pillow, couch) -> PLACE(pillow, couch)
+	a3. patrol(hallway) -> No known action found for "patrol"
+
+===================
+
+KNOWN ACTIONS:
+%s
+-------
+User input: "%s"
+Action verbs in user input:

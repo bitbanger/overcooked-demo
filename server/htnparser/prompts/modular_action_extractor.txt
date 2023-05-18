@@ -1,0 +1,49 @@
+User input: "To get the job done, first you need to find the school and then go to it. Then, you need to eat an orange. Finally, you should draw a picture."
+
+Action verbs in user input: ("find the school") - find, ("go to it") - go, ("eat an orange") - eat, ("draw a picture") - draw
+	"find the school" [a1]
+	"go to it" [a2]
+	"eat an orange" [a3]
+	"draw a picture" [a4]
+
+Decomposed actions:
+	"<find> [the school]" - find(school) [a1]
+	"<go> to [it]" - go(school) [a2]
+	"<eat> [an orange]" - eat(orange) [a3]
+	"<draw> [a picture]" - draw(picture) [a4]
+
+=======
+
+User input: "First, please send a letter. Then, run to the backyard and play there. Finally, go away."
+
+Actions in user input:
+	"send a letter" [a1]
+	"run to the backyard" [a2]
+	"play there" [a3]
+	"go away" [a4]
+
+Decomposed actions:
+	"<send> [a letter]" - send(letter) [a1]
+	"<run> to [the backyard]" - run(backyard) [a2]
+	"<play> [there]" - play(backyard) [a3]
+	"<goAway>" - goAway() [a4]
+
+=======
+
+User input: "Bring the pillow to the couch. Then put it on the couch. Then patrol the hallway."
+
+Actions in user input:
+	"bring the pillow to the couch" [a1]
+	"put it on the couch" [a2]
+	"patrol the hallway" [a3]
+
+Decomposed actions:
+	"<bring> [the pillow] to [the couch]" - bring(pillow, couch) [a1]
+	"<put> [it] on [the couch]" - put(pillow, couch) [a2]
+	"<patrol> [the hallway]" - patrol(hallway) [a3]
+
+=======
+
+User input: "%s"
+
+Actions in user input:

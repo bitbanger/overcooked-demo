@@ -1,0 +1,2 @@
+moveTo,grasp,release,keep,turn,open,close,wait,scoop,place,add,pour,squeeze,press,insert
+Play a game and then feed me.

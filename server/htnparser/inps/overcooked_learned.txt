@@ -1,0 +1,2 @@
+moveToObject(<arg1>) - move over to an object,interactWithObject() - press the space button to interact with whatever you're facing,cook(<arg1>) - a learned ation,put(<arg1>, <arg2>) - a learned action,bring(<arg1>, <arg2>) - a learned action,get(<arg1>) - a learned action
+Please put an onion in the stove

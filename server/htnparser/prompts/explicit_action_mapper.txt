@@ -1,0 +1,58 @@
+primitive action list:
+
+MOVETO
+GRASP
+RELEASE
+KEEP
+TURN
+OPEN
+CLOSE
+WAIT
+SCOOP
+PLACE
+ADD
+POUR
+SQUEEZE
+PRESS
+INSERT
+<done>
+
+learned action list:
+
+<done>
+
+input: "go to the door" -> go(door)
+
+input action: go
+
+is "go" in the primitive action list?: no
+
+is "go" in the learned action list?: no
+
+is "go" a synonym for a primitive action?: yes - MOVETO
+
+is "go" a synonym for a learned action?: no
+
+
+primitive action list:
+
+MOVETO
+GRASP
+RELEASE
+KEEP
+TURN
+OPEN
+CLOSE
+WAIT
+SCOOP
+PLACE
+ADD
+POUR
+SQUEEZE
+PRESS
+INSERT
+
+learned action list:
+
+BOIL
+PATROL

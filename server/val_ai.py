@@ -11,7 +11,8 @@ from overcooked_ai_py.mdp.actions import Action, Direction
 # from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
 # from HTNAgent.tact_agent import TACTAgent
 
-import importlib
+from htnparser.itl import InteractiveTaskLearner
+
 import sys
 import select
 import nltk
@@ -42,7 +43,8 @@ class ValAI():
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,interactWithObject() - press the space button to interact with whatever you're facing")
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,pressSpace() - press the space button to interact with whatever you're facing")
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
-		self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
+		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
+		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
 		self.inp_queue = []
 
 		self.have_acted = False
@@ -574,6 +576,13 @@ class ValAI():
 			# inp = input('Enter action: ').strip()
 			if self.need_inp:
 				# self.itl.save('val_model.pkl')
+				print('')
+				print('\tcurrently known actions:')
+				for ka in self.itl.known_actions():
+					print('\t\t%s' % (ka.split(' - ')[0],))
+				print('')
+				print("\t(to teach new actions, just use them in a sentence, and I'll ask for clarification!)")
+				print('')
 				print('VAL: What should I do?')
 				print('User: ', end='')
 				self.need_inp = False
@@ -598,7 +607,9 @@ class ValAI():
 
 			def clarify_hook2(ua):
 				# inp = input('What do you mean by "%s"?: ' % (ua,))
-				print('VAL: What do you mean by "%s"?' % (ua,))
+				print('\nVAL: What do you mean by "%s"?' % (ua,))
+				print('\t(please give every step of the procedure as _one_ message)')
+				print('\t\t(e.g., "do X, then do Y, then do Z")')
 				print('User: ', end='')
 				inp = wait_input()
 				while True:
