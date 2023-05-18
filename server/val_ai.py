@@ -607,9 +607,9 @@ class ValAI():
 
 			def clarify_hook2(ua):
 				# inp = input('What do you mean by "%s"?: ' % (ua,))
-				print('\nVAL: What do you mean by "%s"?' % (ua,))
-				print('\t(please give every step of the procedure as _one_ message)')
-				print('\t\t(e.g., "do X, then do Y, then do Z")')
+				print('\nVAL: What are the steps of "%s"?' % (ua,))
+				# print('\t(please give every step of the procedure as _one_ message)')
+				# print('\t\t(e.g., "do X, then do Y, then do Z")')
 				print('User: ', end='')
 				inp = wait_input()
 				while True:
