@@ -1,4 +1,8 @@
+import multiprocessing
 import os
+import pipes
+import io
+import sys
 
 # Import and patch the production eventlet server if necessary
 if os.getenv('FLASK_ENV', 'production') == 'production':
@@ -133,7 +137,7 @@ def try_create_game(game_name ,**kwargs):
         curr_id = FREE_IDS.get(block=False)
         assert FREE_MAP[curr_id], "Current id is already in use"
         game_cls = GAME_NAME_TO_CLS.get(game_name, OvercookedGame)
-        game = game_cls(id=curr_id, **kwargs)
+        game = game_cls(id=curr_id, in_stream=in_queue, **kwargs)
     except queue.Empty:
         err = RuntimeError("Server at max capacity")
         return None, err
@@ -487,6 +491,18 @@ def on_action(data):
     
     game.enqueue_action(user_id, action)
 
+# in_stream = io.StringIO()
+# in_stream = open('valdialog', 'w+', buffering=-1)
+# os.mkfifo('./valdialog')
+in_queue = multiprocessing.Queue()
+
+@socketio.on('message')
+def on_message(msg):
+	global in_queue
+	print('got message:')
+	print(msg)
+	# in_stream_w.write(msg['msg'].strip() + '\n')
+	in_queue.put(msg['msg'].strip())
 
 @socketio.on('connect')
 def on_connect():

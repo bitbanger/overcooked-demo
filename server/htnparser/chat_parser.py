@@ -17,23 +17,8 @@ VERB_FN = 'prompts/chat_verbalizer.txt'
 def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
 
-def wait_input(prompt):
-	print(prompt, end='')
-	inp = None
-	while not inp:
-		inp, onp, enp = select.select([sys.stdin], [], [], 5)
-		# print('pre-"if inp" inp is %s' % (inp,))
-		if inp:
-			# print('got raw inp %s (type %s)' % (inp, type(inp)))
-			inp = sys.stdin.readline().strip()
-			# print('read val %s' % (inp,))
-
-	# print('returning "%s" (type %s)' % (inp, type(inp)))
-
-	return inp
-
 class ChatParser:
-	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN):
+	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin):
 		self.act_prompt = self.load_prompt(act_prompt_fn)
 		self.segment_prompt = self.load_prompt(segment_prompt_fn)
 		self.name_prompt = self.load_prompt(name_prompt_fn)
@@ -41,10 +26,28 @@ class ChatParser:
 		self.para_prompt = self.load_prompt(para_fn)
 		self.verb_prompt = self.load_prompt(verb_fn)
 
+		self.in_stream = in_stream
+
 		self.life_depends_prompt = self.load_prompt('prompts/life_depends.txt')
 		self.preselect_prompt = self.load_prompt('prompts/preselect_grounder.txt')
 
 		self.gpt = GPTCompleter()
+
+	def wait_input(self, prompt):
+		print(prompt, end='')
+		inp = None
+		while not inp:
+			inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
+			# print('pre-"if inp" inp is %s' % (inp,))
+			if inp:
+				# print('got raw inp %s (type %s)' % (inp, type(inp)))
+				# inp = self.in_stream.readline().strip()
+				inp = self.in_stream.get().strip()
+				# print('read val %s' % (inp,))
+
+		# print('returning "%s" (type %s)' % (inp, type(inp)))
+
+		return inp
 
 	@staticmethod
 	def load_prompt(prompt_fn):
@@ -237,7 +240,7 @@ class ChatParser:
 	# to the call.
 	def get_actions(self, known_actions, world_state, text, clarify_hook=None):
 		if clarify_hook is None:
-			clarify_hook = lambda a: wait_input('\nWhat do you mean by "%s"?: ' % (a,))
+			clarify_hook = lambda a: self.wait_input('\nWhat do you mean by "%s"?: ' % (a,))
 
 		action_seq = []
 		new_action_defs = {}
@@ -274,9 +277,9 @@ class ChatParser:
 					# Yep, it's known!
 					while True:
 						print('I think that "%s" is the action %s' % (action, grounded))
-						right = wait_input('Is that right? (Y/N): ').strip().lower()
+						right = self.wait_input('Is that right? (Y/N): ').strip().lower()
 						if 'y' not in right:
-							new_action = wait_input('Could you please rephrase "%s", then?: ' % (action,)).strip()
+							new_action = self.wait_input('Could you please rephrase "%s", then?: ' % (action,)).strip()
 							grounded = self.ground_action(new_known_actions, world_state, new_action)
 						else:
 							break
@@ -291,10 +294,10 @@ class ChatParser:
 				# Get a full task definition for it.
 				new_explanation = clarify_hook(action)
 				while True:
-					done = 'n' in wait_input('Are there any other steps for "%s"? (Y/N): ' % (action)).lower()
+					done = 'n' in self.wait_input('Are there any other steps for "%s"? (Y/N): ' % (action)).lower()
 					if done:
 						break
-					next_inp = wait_input('What comes next?: ')
+					next_inp = self.wait_input('What comes next?: ')
 					new_explanation = new_explanation + '. %s' % (next_inp)
 				print('OK, got it!')
 				(_, rec_action_seq, rec_new_action_defs) = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook)

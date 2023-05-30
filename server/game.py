@@ -9,6 +9,7 @@ from overcooked_ai_py.planning.planners import MotionPlanner, NO_COUNTERS_PARAMS
 from human_aware_rl.rllib.rllib import load_agent
 import random, os, pickle, json
 import ray
+import sys
 
 # from htn_ai import HTNAI
 # from manual_ai import ManualAI
@@ -387,13 +388,14 @@ class OvercookedGame(Game):
         - _curr_game_over: Determines whether the game on the current mdp has ended
     """
 
-    def __init__(self, layouts=["cramped_room"], mdp_params={}, num_players=2, gameTime=30, playerZero='human', playerOne='human', showPotential=False, randomized=False, **kwargs):
+    def __init__(self, layouts=["cramped_room"], mdp_params={}, num_players=2, gameTime=30, playerZero='human', playerOne='human', showPotential=False, randomized=False, in_stream=sys.stdin, **kwargs):
         playerOne = 'StayAI'
         gameTime = 9998
         layouts=["asymmetric_advantages_tomato"]
         super(OvercookedGame, self).__init__(**kwargs)
         self.show_potential = showPotential
         self.mdp_params = mdp_params
+        self.in_stream = in_stream
         self.layouts = layouts
         self.max_players = int(num_players)
         self.mdp = None
@@ -602,7 +604,12 @@ class OvercookedGame(Game):
     def get_policy(self, npc_id, idx=0):
         # return HTNAI(self)
         # return ManualAI(self)
-        return ValAI(self)
+        try:
+            vai = ValAI(self, in_stream=self.in_stream)
+            print('vai: %s' % (vai,))
+            return vai
+        except Exception as e:
+            print(repr(e))
         if npc_id.lower().startswith("rllib"):
             try:
                 # Loading rllib agents requires additional helpers

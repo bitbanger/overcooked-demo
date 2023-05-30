@@ -27,24 +27,18 @@ PRINT_TERRAIN = False
 SESS_ID = 'demo_logs/' + str(random.randint(1,10000000))
 PRINT_STATE = False
 
-def wait_input():
-	inp, onp, enp = select.select([sys.stdin], [], [], 5)
-	if inp:
-		inp = sys.stdin.readline().strip()
-		return inp
-	else:
-		return None
-
 class ValAI():
-	def __init__(self, game):
+	def __init__(self, game, in_stream=sys.stdin):
 		self.dirty_bit_ss = False
 		self.dirty_bit_ihtn = False
+
+		self.in_stream = in_stream
 
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,interactWithObject() - press the space button to interact with whatever you're facing")
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,pressSpace() - press the space button to interact with whatever you're facing")
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
-		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
+		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream)
 		self.inp_queue = []
 
 		self.have_acted = False
@@ -90,6 +84,15 @@ class ValAI():
 		# self.target_pos
 
 		# self.env.state_queue_w.send({})
+
+	def wait_input(self):
+		inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
+		if inp:
+			# inp = self.in_stream.readline().strip()
+			inp = self.in_stream.get().strip()
+			return inp
+		else:
+			return None
 
 	def ai_player_pos(self):
 		return self.state.players[1].position
@@ -592,7 +595,7 @@ class ValAI():
 				# inp = sys.stdin.readline().strip()
 			# else:
 				# return Action.STAY, None
-			inp = wait_input()
+			inp = self.wait_input()
 			sleep(0.5)
 			if inp:
 				self.need_inp = True
@@ -611,10 +614,10 @@ class ValAI():
 				# print('\t(please give every step of the procedure as _one_ message)')
 				# print('\t\t(e.g., "do X, then do Y, then do Z")')
 				print('User: ', end='')
-				inp = wait_input()
+				inp = self.wait_input()
 				while True:
 					if inp is None:
-						inp = wait_input()
+						inp = self.wait_input()
 					else:
 						break
 				with open(SESS_ID, 'a+') as f:

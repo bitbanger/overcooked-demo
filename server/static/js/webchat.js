@@ -1,3 +1,5 @@
+// var socket = io();
+
 const msgerForm = get(".msger-inputarea");
 const msgerInput = get(".msger-input");
 const msgerChat = get(".msger-chat");
@@ -21,6 +23,8 @@ msgerForm.addEventListener("submit", event => {
 
   const msgText = msgerInput.value;
   if (!msgText) return;
+
+  socket.emit('message', {'msg': msgText})
 
   appendMessage(PERSON_NAME, PERSON_IMG, "right", msgText);
   msgerInput.value = "";
