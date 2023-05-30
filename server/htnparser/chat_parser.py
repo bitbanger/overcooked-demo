@@ -14,15 +14,21 @@ GROUND_FN = 'prompts/chat_grounder.txt'
 PARA_FN = 'prompts/chat_paraphrase_ider.txt'
 VERB_FN = 'prompts/chat_verbalizer.txt'
 
+def indent(s, n):
+	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
+
 def wait_input(prompt):
 	print(prompt, end='')
 	inp = None
-	while inp is None:
+	while not inp:
 		inp, onp, enp = select.select([sys.stdin], [], [], 5)
+		# print('pre-"if inp" inp is %s' % (inp,))
 		if inp:
+			# print('got raw inp %s (type %s)' % (inp, type(inp)))
 			inp = sys.stdin.readline().strip()
+			# print('read val %s' % (inp,))
 
-	print('returning "%s" (type %s)' % (inp, type(inp)))
+	# print('returning "%s" (type %s)' % (inp, type(inp)))
 
 	return inp
 
@@ -59,7 +65,7 @@ class ChatParser:
 	def segment_text(self, text):
 		# SEGMENTS: 1. "cook an onion" (resolved pronouns: "cook an onion")
 		resp = self.gpt.get_chat_gpt_completion(self.segment_prompt%text)
-		print('I think these are the individual actions of "%s": %s' % (text, resp))
+		print('I think these are the individual actions of "%s":\n%s' % (text, indent(resp, 1)))
 		segs = []
 		for line in resp.split('\n'):
 			segs.append(line.split('"')[5])
