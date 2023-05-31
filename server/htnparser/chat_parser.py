@@ -18,7 +18,7 @@ def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
 
 class ChatParser:
-	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin):
+	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print):
 		self.act_prompt = self.load_prompt(act_prompt_fn)
 		self.segment_prompt = self.load_prompt(segment_prompt_fn)
 		self.name_prompt = self.load_prompt(name_prompt_fn)
@@ -27,6 +27,7 @@ class ChatParser:
 		self.verb_prompt = self.load_prompt(verb_fn)
 
 		self.in_stream = in_stream
+		self.out_fn = out_fn
 
 		self.life_depends_prompt = self.load_prompt('prompts/life_depends.txt')
 		self.preselect_prompt = self.load_prompt('prompts/preselect_grounder.txt')
@@ -34,7 +35,7 @@ class ChatParser:
 		self.gpt = GPTCompleter()
 
 	def wait_input(self, prompt):
-		print(prompt, end='')
+		self.out_fn(prompt, end='', flush=True)
 		inp = None
 		while not inp:
 			inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
@@ -68,7 +69,7 @@ class ChatParser:
 	def segment_text(self, text):
 		# SEGMENTS: 1. "cook an onion" (resolved pronouns: "cook an onion")
 		resp = self.gpt.get_chat_gpt_completion(self.segment_prompt%text)
-		print('I think these are the individual actions of "%s":\n%s' % (text, indent(resp, 1)))
+		self.out_fn('I think these are the individual actions of "%s":\n%s' % (text, indent(resp, 1)))
 		segs = []
 		for line in resp.split('\n'):
 			segs.append(line.split('"')[5])
@@ -276,8 +277,9 @@ class ChatParser:
 				else:
 					# Yep, it's known!
 					while True:
-						print('I think that "%s" is the action %s' % (action, grounded))
-						right = self.wait_input('Is that right? (Y/N): ').strip().lower()
+						known_prompt = 'I think that "%s" is the action %s' % (action, grounded)
+						known_prompt = known_prompt + '\n\nIs that right? (Y/N)'
+						right = self.wait_input(known_prompt).strip().lower()
 						if 'y' not in right:
 							new_action = self.wait_input('Could you please rephrase "%s", then?: ' % (action,)).strip()
 							grounded = self.ground_action(new_known_actions, world_state, new_action)
@@ -299,7 +301,7 @@ class ChatParser:
 						break
 					next_inp = self.wait_input('What comes next?: ')
 					new_explanation = new_explanation + '. %s' % (next_inp)
-				print('OK, got it!')
+				self.out_fn('OK, got it!')
 				(_, rec_action_seq, rec_new_action_defs) = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook)
 
 				# Extract the set of all argument objects in the subtree for
@@ -324,7 +326,7 @@ class ChatParser:
 				new_pred_and_args = self.ground_new_args(action, subtree_objects)
 				new_pred = new_pred_and_args.split('(')[0]
 				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',')]
-				print('I think that these are the arguments of "%s": %s' % (action, new_args))
+				self.out_fn('I think that these are the arguments of "%s": %s' % (action, new_args))
 				new_pred_and_args_gen = '%s(%s)' % (new_pred, ', '.join([('<arg%d>' % (i+1)) for i in range(len(new_args))]))
 
 				# print('NEW ACTION LEARNED: %s' % (new_pred_and_args))

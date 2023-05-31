@@ -116,6 +116,15 @@ handler = logging.FileHandler(LOGFILE)
 handler.setLevel(logging.ERROR)  
 app.logger.addHandler(handler)  
 
+chat_buf_lock = Lock()
+def chat_out_fn(msg):
+	global chat_buf_lock
+	chat_buf_lock.acquire()
+	try:
+		with app.app_context():
+			socketio.emit('valmsg', {'msg': msg})
+	finally:
+		chat_buf_lock.release()
 
 #################################
 # Global Coordination Functions #
@@ -137,7 +146,7 @@ def try_create_game(game_name ,**kwargs):
         curr_id = FREE_IDS.get(block=False)
         assert FREE_MAP[curr_id], "Current id is already in use"
         game_cls = GAME_NAME_TO_CLS.get(game_name, OvercookedGame)
-        game = game_cls(id=curr_id, in_stream=in_queue, **kwargs)
+        game = game_cls(id=curr_id, in_stream=in_queue, out_fn=chat_out_fn, **kwargs)
     except queue.Empty:
         err = RuntimeError("Server at max capacity")
         return None, err

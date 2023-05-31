@@ -24,13 +24,13 @@ class InteractiveTaskLearner:
 	# primitive_actions is passed in as a comma-separated string
 	# of actions in the following format (excluding quotes):
 	# "PRED(<arg1>, <arg2>, ...) - an action description"
-	def __init__(self, primitive_actions, in_stream=sys.stdin):
+	def __init__(self, primitive_actions, in_stream=sys.stdin, out_fn=print):
 		self.gen_task_knowledge = dict()
 
 		self.arg_num = 0
 
 		# self.parser = ModularHTNParser()
-		self.parser = ChatParser(in_stream=in_stream)
+		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn)
 
 		self.primitive_actions = [x.strip() for x in primitive_actions.split(',')]
 

@@ -388,7 +388,7 @@ class OvercookedGame(Game):
         - _curr_game_over: Determines whether the game on the current mdp has ended
     """
 
-    def __init__(self, layouts=["cramped_room"], mdp_params={}, num_players=2, gameTime=30, playerZero='human', playerOne='human', showPotential=False, randomized=False, in_stream=sys.stdin, **kwargs):
+    def __init__(self, layouts=["cramped_room"], mdp_params={}, num_players=2, gameTime=30, playerZero='human', playerOne='human', showPotential=False, randomized=False, in_stream=sys.stdin, out_fn=print, **kwargs):
         playerOne = 'StayAI'
         gameTime = 9998
         layouts=["asymmetric_advantages_tomato"]
@@ -396,6 +396,7 @@ class OvercookedGame(Game):
         self.show_potential = showPotential
         self.mdp_params = mdp_params
         self.in_stream = in_stream
+        self.out_fn = out_fn
         self.layouts = layouts
         self.max_players = int(num_players)
         self.mdp = None
@@ -605,7 +606,7 @@ class OvercookedGame(Game):
         # return HTNAI(self)
         # return ManualAI(self)
         try:
-            vai = ValAI(self, in_stream=self.in_stream)
+            vai = ValAI(self, in_stream=self.in_stream, out_fn=self.out_fn)
             print('vai: %s' % (vai,))
             return vai
         except Exception as e:

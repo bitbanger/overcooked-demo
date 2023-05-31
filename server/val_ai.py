@@ -28,17 +28,18 @@ SESS_ID = 'demo_logs/' + str(random.randint(1,10000000))
 PRINT_STATE = False
 
 class ValAI():
-	def __init__(self, game, in_stream=sys.stdin):
+	def __init__(self, game, in_stream=sys.stdin, out_fn=print):
 		self.dirty_bit_ss = False
 		self.dirty_bit_ihtn = False
 
 		self.in_stream = in_stream
+		self.out_fn = out_fn
 
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,interactWithObject() - press the space button to interact with whatever you're facing")
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,pressSpace() - press the space button to interact with whatever you're facing")
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
-		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream)
+		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn)
 		self.inp_queue = []
 
 		self.have_acted = False
@@ -579,15 +580,16 @@ class ValAI():
 			# inp = input('Enter action: ').strip()
 			if self.need_inp:
 				# self.itl.save('val_model.pkl')
-				print('')
-				print('\tcurrently known actions:')
+				msg = ''
+				msg = msg + '\tcurrently known actions:'
 				for ka in self.itl.known_actions():
-					print('\t\t%s' % (ka.split(' - ')[0],))
-				print('')
-				print("\t(to teach new actions, just use them in a sentence, and I'll ask for clarification!)")
-				print('')
-				print('VAL: What should I do?')
-				print('User: ', end='')
+					msg = msg + '\t\t%s' % (ka.split(' - ')[0],)
+				msg = msg + ''
+				msg = msg + "\t(to teach new actions, just use them in a sentence, and I'll ask for clarification!)"
+				msg = msg + ''
+				msg = msg + 'What should I do?'
+				self.out_fn(msg)
+				# self.out_fn('User: ', end='')
 				self.need_inp = False
 			# inp, onp, enp = select.select([sys.stdin], [], [], 5)
 			# if inp:
@@ -610,10 +612,10 @@ class ValAI():
 
 			def clarify_hook2(ua):
 				# inp = input('What do you mean by "%s"?: ' % (ua,))
-				print('\nVAL: What are the steps of "%s"?' % (ua,))
-				# print('\t(please give every step of the procedure as _one_ message)')
-				# print('\t\t(e.g., "do X, then do Y, then do Z")')
-				print('User: ', end='')
+				self.out_fn('VAL: What are the steps of "%s"?' % (ua,))
+				# self.out_fn('\t(please give every step of the procedure as _one_ message)')
+				# self.out_fn('\t\t(e.g., "do X, then do Y, then do Z")')
+				# self.out_fn('User: ', end='')
 				inp = self.wait_input()
 				while True:
 					if inp is None:

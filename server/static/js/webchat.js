@@ -18,6 +18,10 @@ const PERSON_IMG = "https://image.flaticon.com/icons/svg/145/145867.svg";
 const BOT_NAME = "BOT";
 const PERSON_NAME = "Sajad";
 
+socket.on('valmsg', function(data) {
+	botResponse(data['msg']);
+});
+
 msgerForm.addEventListener("submit", event => {
   event.preventDefault();
 
@@ -28,8 +32,6 @@ msgerForm.addEventListener("submit", event => {
 
   appendMessage(PERSON_NAME, PERSON_IMG, "right", msgText);
   msgerInput.value = "";
-
-  botResponse();
 });
 
 function appendMessage(name, img, side, text) {
@@ -53,14 +55,12 @@ function appendMessage(name, img, side, text) {
   msgerChat.scrollTop += 500;
 }
 
-function botResponse() {
-  const r = random(0, BOT_MSGS.length - 1);
-  const msgText = BOT_MSGS[r];
-  const delay = msgText.split(" ").length * 100;
+function botResponse(msgText) {
+  // const delay = msgText.split(" ").length * 100;
 
-  setTimeout(() => {
+  // setTimeout(() => {
     appendMessage(BOT_NAME, BOT_IMG, "left", msgText);
-  }, delay);
+  // }, delay);
 }
 
 // Utils
