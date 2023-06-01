@@ -8,6 +8,7 @@ if __name__ == '__main__':
 else:
 	from .gpt_completer import GPTCompleter
 
+RECLARIFY = 'RECLARIFY'
 GLOBAL_CHOICE_ID = 0
 ACT_FN = 'prompts/convo2.txt'
 SEG_FN = 'prompts/chat_segmenter.txt'
@@ -82,7 +83,11 @@ class ChatParser:
 			line = lines[i]
 			resolved = line.split('"')[-2]
 			msg = msg + '\n\t%d. <i>%s</i>' % (i+1, resolved)
-		self.out_fn(msg)
+
+		msg = msg + YESNO
+		ans = self.wait_input(msg)
+		if ans == 'N':
+			return None
 
 		segs = []
 		for line in resp.split('\n'):
@@ -247,6 +252,19 @@ class ChatParser:
 
 		return list(args)
 
+	def get_steps_for_clarify(self, action, clarify_hook):
+		new_explanation = clarify_hook(action)
+		while True:
+			done = (self.wait_input('Are there any other steps for "%s"?%s' % (action, YESNO)) == 'N')
+			if done:
+				break
+			next_inp = self.wait_input('OK, what comes next?')
+			new_explanation = new_explanation + '. %s' % (next_inp)
+		self.out_fn('OK, got it!')
+
+		return new_explanation
+		
+
 	# get_actions takes a list of known actions, a world state,
 	# and a textual description of an action sequence, and returns
 	# two things:
@@ -259,7 +277,7 @@ class ChatParser:
 	# a recursive call to itself on new input. When the process concludes,
 	# all new actions will be groundable in terms of actions known prior
 	# to the call.
-	def get_actions(self, known_actions, world_state, text, clarify_hook=None):
+	def get_actions(self, known_actions, world_state, text, clarify_hook=None, within_clarify=False):
 		global GLOBAL_CHOICE_ID
 
 		if clarify_hook is None:
@@ -269,7 +287,16 @@ class ChatParser:
 		new_action_defs = {}
 
 		# First, segment the actions
-		action_segments = self.segment_text(text)
+		action_segments = None
+		while action_segments is None:
+			action_segments = self.segment_text(text)
+			if action_segments is None:
+				if not within_clarify:
+					text = self.wait_input('Sorry about that. Would you mind re-phrasing the command, then, please?').strip()
+					continue
+				else:
+					return RECLARIFY
+			
 		# print('SEGMENTS: %s' % action_segments)
 
 		# Now try to ground out each one. If it works,
@@ -335,16 +362,20 @@ class ChatParser:
 				# Get a name for it.
 				new_name = self.name_action(action)
 
-				# Get a full task definition for it.
-				new_explanation = clarify_hook(action)
-				while True:
-					done = 'n' in self.wait_input('Are there any other steps for "%s"? (Y/N): ' % (action)).lower()
-					if done:
-						break
-					next_inp = self.wait_input('What comes next?')
-					new_explanation = new_explanation + '. %s' % (next_inp)
-				self.out_fn('OK, got it!')
-				(_, rec_action_seq, rec_new_action_defs) = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook)
+				# (_, rec_action_seq, rec_new_action_defs) = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, within_clarify=True)
+				(rec_action_seq, rec_new_action_defs) = (None, None)
+				res = RECLARIFY
+				while res == RECLARIFY:
+					# Get a full task definition for it.
+					new_explanation = self.get_steps_for_clarify(action, clarify_hook)
+					res = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, within_clarify=True)
+					if res == RECLARIFY:
+						# Some substep of get_actions failed, so we're taking a step all the way back here.
+						# This happens most often with a failed action segmentation, which is bad enough to
+						# require a reset.
+						self.out_fn("Sorry about that. Let's take a step back and try again so I can understand better.")
+					else:
+						(_, rec_action_seq, rec_new_action_defs) = res
 
 				# Extract the set of all argument objects in the subtree for
 				# the next step, described immediately below.
