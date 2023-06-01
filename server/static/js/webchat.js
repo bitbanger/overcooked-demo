@@ -22,6 +22,26 @@ socket.on('valmsg', function(data) {
 	botResponse(data['msg']);
 });
 
+$(document).ready(function() {
+	document.addEventListener('click', function(event) {
+		if(event.target) {
+			if ( (event.target.className == 'msger-yes-btn') || (event.target.className == 'msger-no-btn') ) {
+				// console.log(event.target.id);
+				event.preventDefault();
+				var msg = 'Y';
+				if (event.target.className == 'msger-no-btn') {
+					msg = 'N';
+				}
+				socket.emit('message', {'msg': msg});
+				$(event.target).prop("disabled", true);
+				//$(event.target).css("background-color", "gray");
+				$(event.target).siblings(":button").prop("disabled", true);
+				$(event.target).siblings(":button").css("background-color", "gray");
+			}
+		}
+	});
+});
+
 msgerForm.addEventListener("submit", event => {
   event.preventDefault();
 

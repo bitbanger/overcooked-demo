@@ -118,6 +118,19 @@ body {
   margin: 0 0 0 10px;
 }
 
+.msger-ynbox {
+  display: flex;
+  padding: 2px;
+  border-top: var(--border);
+  background: #eee;
+}
+.msger-ynbox * {
+  padding: 2px;
+  border: none;
+  border-radius: 3px;
+  font-size: 1em;
+}
+
 .msger-inputarea {
   display: flex;
   padding: 10px;
@@ -144,6 +157,36 @@ body {
 }
 .msger-send-btn:hover {
   background: rgb(0, 180, 50);
+}
+.msger-yes-btn {
+  margin-left: 10px;
+  background: rgb(0, 196, 65);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.23s;
+  padding: 10px;
+  border: none;
+  border-radius: 3px;
+  font-size: 1em;
+}
+.msger-yes-btn:hover {
+  background: rgb(0, 180, 50);
+}
+.msger-no-btn {
+  margin-left: 10px;
+  background: rgb(196, 25, 25);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.23s;
+  padding: 10px;
+  border: none;
+  border-radius: 3px;
+  font-size: 1em;
+}
+.msger-no-btn:hover {
+  background: rgb(180, 18, 18);
 }
 
 .msger-chat {

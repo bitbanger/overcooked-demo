@@ -517,6 +517,14 @@ def on_message(msg):
 	# in_stream_w.write(msg['msg'].strip() + '\n')
 	in_queue.put(msg['msg'].strip())
 
+@socketio.on('yesno')
+def on_message(msg):
+	global in_queue
+	print('got y/n ans:')
+	print(msg)
+	# in_stream_w.write(msg['msg'].strip() + '\n')
+	in_queue.put(msg['msg'].strip())
+
 @socketio.on('connect')
 def on_connect():
     user_id = request.sid

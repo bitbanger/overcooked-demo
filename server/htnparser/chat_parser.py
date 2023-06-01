@@ -286,7 +286,10 @@ class ChatParser:
 					# Yep, it's known!
 					while True:
 						known_prompt = 'I think that "%s" is the action %s' % (action, grounded)
-						known_prompt = known_prompt + '\n\nIs that right? (Y/N)'
+						known_prompt = known_prompt + '\n\nIs that right?'
+						known_prompt = known_prompt + r'''
+
+<button class="msger-yes-btn" value="Y">Yes</button><button class="msger-no-btn" value="N">No</button>'''
 						right = self.wait_input(known_prompt).strip().lower()
 						if 'y' not in right:
 							new_action = self.wait_input('Could you please rephrase "%s", then?: ' % (action,)).strip()
