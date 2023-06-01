@@ -65,6 +65,29 @@ $(document).ready(function() {
 	});
 });
 
+$(document).ready(function() {
+	document.addEventListener('submit', function(event) {
+		if(event.target) {
+			if (event.target.id == "argdropdownform") {
+				event.preventDefault();
+				var str = '';
+				$(event.target).children('.argdropdown').each(function() {
+					str = str + '\t' + $(this).val();
+				});
+				// console.log(str);
+				socket.emit('message', {'msg': str});
+
+				$(event.target).children('.argdropdown').prop("disabled", true);
+				$(event.target).children('.msger-yes-btn').prop("disabled", true);
+				$(event.target).children('.msger-yes-btn').css("background-color", "gray");
+				// $(event.target).prop("disabled", true);
+				// $(event.target).siblings(".msger-act-radio").prop("disabled", true);
+				// socket.emit('message', {'msg': event.target.value});
+			}
+		}
+	});
+});
+
 msgerForm.addEventListener("submit", event => {
   event.preventDefault();
 

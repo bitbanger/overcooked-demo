@@ -19,9 +19,6 @@ VERB_FN = 'prompts/chat_verbalizer.txt'
 YESNO = r'''
 
 <button class="msger-yes-btn" id="msger-yes-btn" value="Y">Yes</button><button class="msger-no-btn" id="msger-no-btn" value="N">No</button>'''
-ACTION_ARGS_OR_BOTH = r'''
-
-<button class="msger-no-btn" id="msger-bad-action-btn" value="action">Action</button><button class="msger-no-btn" id="msger-bad-args-btn" value="args">Objects</button><button class="msger-no-btn" id="msger-bad-both-btn" value="both">Both</button>'''
 
 def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
@@ -363,6 +360,13 @@ class ChatParser:
 						# 	1. the user agreed the action was right
 						# 	2. the user corrected the action to something specific
 						# In either case, "grounded" stores args we now have to check.
+
+						# First, get the canonical action description from our list and compare arg
+						# parities. If the parities are wrong, we don't even have to ask.
+						canonical_action_desc = [x for x in new_known_actions if x.split('(')[0] == grounded.split('(')[0]][0].split(' - ')[0].strip()
+						canonical_action = canonical_action_desc.split('(')[0]
+						canonical_action_args = [x.strip() for x in canonical_action_desc[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
+
 						grounded_action = grounded.split('(')[0]
 						grounded_args = [x.strip() for x in grounded[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
 						grounded_args_fmt = ''
@@ -375,16 +379,68 @@ class ChatParser:
 									grounded_args_fmt = grounded_args_fmt + ', <code>%s</code>' % (ga)
 							else:
 								grounded_args_fmt = grounded_args_fmt + '<code>%s</code>' % (ga)
-						arg_prompt = 'OK, and the object%s of the action <code>%s</code> %s %s, right?%s' % ('' if len(grounded_args)==1 else 's', grounded_action, 'is' if len(grounded_args) == 1 else 'are', grounded_args_fmt, YESNO)
-						if len(grounded_args) == 0:
-							arg_prompt = 'OK, and there are no objects of the action <code>%s</code>, right?%s' % (grounded_action, YESNO)
-						if self.wait_input(arg_prompt) != 'Y':
+
+						print('grounded is %s, canonical action args are %s, grounded args are %s' % (grounded, canonical_action_args, grounded_args))
+
+						# If the actual argument takes no args, there's no real point in prompting them to assign
+						# any, and informing them of the mismatch seems like a waste of time/screen space.
+						parity_oks_args = (len(canonical_action_args) == len(grounded_args)) or len(canonical_action_args) == 0
+						user_oks_args = True
+
+						if parity_oks_args and len(grounded_args) > 0:
+							arg_prompt = 'OK, and the object%s of the action <code>%s</code> %s %s, right?%s' % ('' if len(grounded_args)==1 else 's', grounded_action, 'is' if len(grounded_args) == 1 else 'are', grounded_args_fmt, YESNO)
+							# if len(grounded_args) == 0:
+								# arg_prompt = 'OK, and there are no objects of the action <code>%s</code>, right?%s' % (grounded_action, YESNO)
+
+							user_oks_args = (self.wait_input(arg_prompt) == 'Y')
+
+						err_msg = ''
+						if not parity_oks_args:
+							# TODO: even if we don't show them, compare the corrected list to whatever we've got here for partial credit
+							obj_maybe_plur = 'objects' if len(canonical_action_args) != 1 else 'object'
+							if len(grounded_args) == 0:
+								err_msg = "Sorry, but <code>%s</code> has %d object slots, and I'm not sure what to put in them. Could you please clarify which %s to put in those slots?" % (grounded_action, len(grounded_args), obj_maybe_plur)
+							elif len(grounded_args) == 1:
+								err_msg = 'Sorry, I thought you wanted me to do this action on just the object %s, but <code>%s</code> has %d object slots. Could you please clarify which %s to put in those slots?' % (grounded_args_fmt, grounded_action, len(canonical_action_args), obj_maybe_plur)
+							else:
+								err_msg = 'Sorry, I thought you wanted me to do this action on the %d objects %s, but <code>%s</code> has %d object slots. Could you please clarify which %s to put in those slots?' % (len(grounded_args), grounded_args_fmt, grounded_action, len(canonical_action_args), obj_maybe_plur)
+						if not user_oks_args:
+							err_msg = "Sorry about that. Could you help me pick the actual objects?"
+						if err_msg != '':
 							# We didn't get the args right.
-							self.out_fn("OK, well, we won't deal with that right now. Sorry.")
+
+							# Start forming a request for arg binding.
+							objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+
+							dropdown_template = '<select class="argdropdown" id="dropdown%d">'
+							for o in objs:
+								dropdown_template = dropdown_template + '<option value="%s">%s</option>' % (o, o)
+							dropdown_template = dropdown_template + '</select>'
+
+							slots = canonical_action_args
+							print('slot: %s' % (slots,))
+
+							new_args_msg = err_msg + '\n\n'
+							action_str = '<code>%s</code><b>(</b> ' % canonical_action
+							for s_i in range(len(slots)):
+								if s_i > 0:
+									action_str = action_str + ' <b>,</b> '
+								action_str = action_str + (dropdown_template % GLOBAL_CHOICE_ID)
+								GLOBAL_CHOICE_ID += 1
+							action_str = action_str + ' <b>)</b>'
+							new_args_msg = new_args_msg + action_str
+
+							new_args_msg = '<form id="argdropdownform">%s\n\n<input type="submit" class="msger-yes-btn"></form>'  % (new_args_msg,)
+
+							selection = self.wait_input(new_args_msg)
+							print('got selection %s' % (selection,))
+							parsed_new_args = selection.strip().split('\t')
+							grounded = grounded.split('(')[0] + '(' + ','.join(parsed_new_args) + ')'
 
 						break
 
 					if not is_unknown: # the loop may have set this to be true
+						pred = grounded.split('(')[0]
 						args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]
 						learned_or_known = 'known' if pred in [x.split('(')[0] for x in known_actions] else 'learned'
 						action_seq.append(('known', pred, args))

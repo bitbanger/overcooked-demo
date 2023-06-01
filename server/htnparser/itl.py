@@ -32,7 +32,7 @@ class InteractiveTaskLearner:
 		# self.parser = ModularHTNParser()
 		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn)
 
-		self.primitive_actions = [x.strip() for x in primitive_actions.split(',')]
+		self.primitive_actions = [x.strip() for x in primitive_actions.split(', ')]
 
 	def known_actions(self):
 		learned_actions = []
