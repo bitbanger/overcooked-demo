@@ -76,7 +76,19 @@ class GPTCompleter:
 				stop=None,
 			).choices[0].text
 
-	def get_chat_gpt_completion(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None):
+	def get_chat_gpt_completion(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, retries=5):
+		res = None
+		for _ in range(retries):
+			try:
+				res = self.get_chat_gpt_completion_helper(prompt, temp=temp, rep_pen=rep_pen, max_length=max_length, stop=stop)
+			except openai.error.RateLimitError:
+				continue
+
+			break
+
+		return res
+
+	def get_chat_gpt_completion_helper(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None):
 		print('.', end='')
 		prompt_msgs = [x.strip() for x in prompt.split('***') if len(x.strip()) > 0]
 		annotated_msgs = []

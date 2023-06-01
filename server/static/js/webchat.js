@@ -32,11 +32,25 @@ $(document).ready(function() {
 				if (event.target.className == 'msger-no-btn') {
 					msg = 'N';
 				}
-				socket.emit('message', {'msg': msg});
 				$(event.target).prop("disabled", true);
 				//$(event.target).css("background-color", "gray");
 				$(event.target).siblings(":button").prop("disabled", true);
 				$(event.target).siblings(":button").css("background-color", "gray");
+				socket.emit('message', {'msg': msg});
+			}
+		}
+	});
+});
+
+$(document).ready(function() {
+	document.addEventListener('change', function(event) {
+		if(event.target) {
+			if (event.target.className == 'msger-act-radio') {
+				event.preventDefault();
+				// console.log(event.target.value);
+				// $(event.target).prop("disabled", true);
+				$(event.target).siblings(".msger-act-radio").prop("disabled", true);
+				socket.emit('message', {'msg': event.target.value});
 			}
 		}
 	});

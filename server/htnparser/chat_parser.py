@@ -1,3 +1,4 @@
+import html
 import os.path
 import select
 import sys
@@ -7,12 +8,16 @@ if __name__ == '__main__':
 else:
 	from .gpt_completer import GPTCompleter
 
+GLOBAL_CHOICE_ID = 0
 ACT_FN = 'prompts/convo2.txt'
 SEG_FN = 'prompts/chat_segmenter.txt'
 NAME_FN = 'prompts/chat_namer.txt'
 GROUND_FN = 'prompts/chat_grounder.txt'
 PARA_FN = 'prompts/chat_paraphrase_ider.txt'
 VERB_FN = 'prompts/chat_verbalizer.txt'
+YESNO = r'''
+
+<button class="msger-yes-btn" value="Y">Yes</button><button class="msger-no-btn" value="N">No</button>'''
 
 def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
@@ -70,8 +75,9 @@ class ChatParser:
 		# SEGMENTS: 1. "cook an onion" (resolved pronouns: "cook an onion")
 		resp = self.gpt.get_chat_gpt_completion(self.segment_prompt%text)
 		# self.out_fn('I think these are the individual actions of "%s":\n%s' % (text, indent(resp, 1)))
-		msg = 'I think these are the individual actions of "<i>%s</i>":' % (text,)
+		msg = 'These are the individual steps of your command, right?\n'
 		lines = resp.strip().split('\n')
+		lines = [l for l in lines if 'resolved pronouns' in l]
 		for i in range(len(lines)):
 			line = lines[i]
 			resolved = line.split('"')[-2]
@@ -80,7 +86,7 @@ class ChatParser:
 
 		segs = []
 		for line in resp.split('\n'):
-			segs.append(line.split('"')[5])
+			segs.append(line.split('"')[-2])
 
 		return segs
 
@@ -102,6 +108,7 @@ class ChatParser:
 
 	def ground_new_args(self, action, objects):
 		name = self.name_action(action)
+		print('grounding %s with objs %s' % (action, objects))
 		inp = 'OBJECTS: [%s]' % ', '.join([x for x in objects if len(x.strip()) > 0])
 		inp = inp + '\nPHRASE: "%s"' % action
 		inp = inp + '\nVERB: %s' % name.split('(')[0]
@@ -169,14 +176,19 @@ class ChatParser:
 		# prompt_inp = '1. %s\n2. %s\n3. "%s"' % (ka_str, obj_str, action)
 		# prompt = self.act_prompt % prompt_inp
 
-	def ground_action(self, known_actions, world_state, action):
-		chosen_action_pred = self.choose_action_pred(known_actions, world_state, action)
+	def ground_action(self, known_actions, world_state, action, forced_action=None):
+		chosen_action_pred = forced_action
+		if forced_action is None:
+			chosen_action_pred = self.choose_action_pred(known_actions, world_state, action)
+
 		if chosen_action_pred == 'noGoodAction':
 			return 'noGoodAction'
 
 		chosen_action_args = self.choose_action_args(chosen_action_pred, world_state, action)
 
-		if not self.is_paraphrase(action, chosen_action_args):
+		# If we were forced, by the user, to pick an action, don't bother
+		# using GPT to find out if it's a good paraphrase; they *told us* it was.
+		if (forced_action is None) and (not self.is_paraphrase(action, chosen_action_args)):
 			return 'noGoodAction'
 
 		return chosen_action_args
@@ -248,6 +260,8 @@ class ChatParser:
 	# all new actions will be groundable in terms of actions known prior
 	# to the call.
 	def get_actions(self, known_actions, world_state, text, clarify_hook=None):
+		global GLOBAL_CHOICE_ID
+
 		if clarify_hook is None:
 			clarify_hook = lambda a: self.wait_input('\nWhat do you mean by "%s"?: ' % (a,))
 
@@ -285,20 +299,37 @@ class ChatParser:
 				else:
 					# Yep, it's known!
 					while True:
-						known_prompt = 'I think that "%s" is the action %s' % (action, grounded)
+						known_prompt = 'I think that "<i>%s</i>" is the action <code>%s</code>' % (action, grounded)
 						known_prompt = known_prompt + '\n\nIs that right?'
-						known_prompt = known_prompt + r'''
-
-<button class="msger-yes-btn" value="Y">Yes</button><button class="msger-no-btn" value="N">No</button>'''
+						known_prompt = known_prompt + YESNO
 						right = self.wait_input(known_prompt).strip().lower()
 						if 'y' not in right:
-							new_action = self.wait_input('Could you please rephrase "%s", then?: ' % (action,)).strip()
-							grounded = self.ground_action(new_known_actions, world_state, new_action)
+							manual_msg = 'Sorry about that. Which of these is a better choice for "<i>%s</i>"?\n' % (action,)
+							for ka in new_known_actions:
+								ka_val = html.escape(ka.split('(')[0])
+								ka_str = html.escape(ka.split(' - ')[0])
+								manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="%s">' % (ka_val,)
+								manual_msg = manual_msg + '\t<label for="choice%d"><code>%s</code></label>' % (GLOBAL_CHOICE_ID, ka_str)
+								GLOBAL_CHOICE_ID += 1
+							manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
+							manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
+
+							manual_action = self.wait_input(manual_msg)
+							if manual_action == 'noGoodAction':
+								is_unknown = True
+								break
+
+							grounded = self.ground_action(new_known_actions, world_state, action, forced_action=manual_action)
+							if grounded == 'noGoodAction':
+								is_unknown = True
+								break
 						else:
 							break
-					args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]
-					learned_or_known = 'known' if pred in [x.split('(')[0] for x in known_actions] else 'learned'
-					action_seq.append(('known', pred, args))
+
+					if not is_unknown: # the loop may have set this to be true
+						args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]
+						learned_or_known = 'known' if pred in [x.split('(')[0] for x in known_actions] else 'learned'
+						action_seq.append(('known', pred, args))
 			# print('known? %s' % ('no' if is_unknown else 'yes'))
 			if is_unknown: # New, unknown action
 				# Get a name for it.
