@@ -13,10 +13,10 @@ const BOT_MSGS = [
 
 
 // Icons made by Freepik from www.flaticon.com
-const BOT_IMG = "https://image.flaticon.com/icons/svg/327/327779.svg";
-const PERSON_IMG = "https://image.flaticon.com/icons/svg/145/145867.svg";
-const BOT_NAME = "BOT";
-const PERSON_NAME = "Sajad";
+const BOT_IMG = "static/images/val_icon.svg";
+const PERSON_IMG = "static/images/usr_icon.svg";
+const BOT_NAME = "VAL";
+const PERSON_NAME = "You";
 
 socket.on('valmsg', function(data) {
 	botResponse(data['msg']);

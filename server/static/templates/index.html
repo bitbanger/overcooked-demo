@@ -31,47 +31,6 @@
 
 <div id="page">
 <div id="rightpanel">
-    <form>
-      <div class="container">
-      <div class="row text-center">
-	<div class="form-group col-lg-3">
-	  <label for="playerZero" style="color:#1E6A9E">Player 1</label>
-	  <select class="form-control" id="playerZero" name="playerZero">
-        <option value="human">Human Keyboard Input</option>
-        {% for agent_name in agent_names %}
-            <option value={{agent_name}}>{{agent_name}}</option>
-        {% endfor %}
-	  </select>
-    </div>
-  <div class="form-group col-lg-3">
-    <label for="playerOne" style="color:#44956B">Player 2</label>
-    <select class="form-control" id="playerOne" name="playerOne">
-        <option value="human">Human Keyboard Input</option>
-        {% for agent_name in agent_names %}
-            <option value={{agent_name}}>{{agent_name}}</option>
-        {% endfor %}
-    </select>
-  </div>
-	<div class="form-group col-lg-2">
-	  <label for="layout">Layout</label>
-	  <select class="form-control" id="layout" name="layout">
-        {% for layout in layouts %}
-            <option value={{layout}}>{{layout}}</option>
-        {% endfor %}
-	  </select>
-	</div>
-  <div class="form-group col-lg-2">
-    <label for="gameTime">Game Length (sec)</label>
-    <input type="number" id="gameTime" value="30" min="1" max="1800" name="gameTime">
-  </div>
-  <div class="form-group col-lg-2">
-    <label for="showPotential">Show Potential?</label>
-    <input type="checkbox" id="showPotential" name="showPotential">
-  </div>
-  
-      </div>
-      </div>
-    </form>
     <h4 id="instructions" class="text-center"><a href="./instructions">Instructions</a></h4>
     <h4 id="tutorial" class="text-center"><a href="./tutorial">Tutorial</a></h4>
     <div id="lobby", class="text-center" style="display:none">
@@ -107,7 +66,7 @@
 <section class="msger">
   <header class="msger-header">
     <div class="msger-header-title">
-      <i class="fas fa-comment-alt"></i> SimpleChat
+      <i class="fas fa-comment-alt"></i> Chat With VAL
     </div>
     <div class="msger-header-options">
       <span><i class="fas fa-cog"></i></span>
@@ -115,30 +74,6 @@
   </header>
 
   <main class="msger-chat">
-    <div class="msg left-msg">
-      <div
-       class="msg-img"
-       style="background-image: url(https://image.flaticon.com/icons/svg/327/327779.svg)"
-      ></div>
-
-      <div class="msg-bubble">
-        <div class="msg-info">
-          <div class="msg-info-name">BOT</div>
-          <div class="msg-info-time">12:45</div>
-        </div>
-
-        <div class="msg-text">
-          Hi, welcome to SimpleChat! Go ahead and send me a message. 😄
-        </div>
-      </div>
-    </div>
-
-    <div class="msg right-msg">
-      <div
-       class="msg-img"
-       style="background-image: url(https://image.flaticon.com/icons/svg/145/145867.svg)"
-      ></div>
-    </div>
   </main>
 
   <form class="msger-inputarea">

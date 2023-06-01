@@ -606,9 +606,7 @@ class OvercookedGame(Game):
         # return HTNAI(self)
         # return ManualAI(self)
         try:
-            vai = ValAI(self, in_stream=self.in_stream, out_fn=self.out_fn)
-            print('vai: %s' % (vai,))
-            return vai
+            return ValAI(self, in_stream=self.in_stream, out_fn=self.out_fn)
         except Exception as e:
             print(repr(e))
         if npc_id.lower().startswith("rllib"):

@@ -120,6 +120,10 @@ chat_buf_lock = Lock()
 def chat_out_fn(msg):
 	global chat_buf_lock
 	chat_buf_lock.acquire()
+
+	msg = msg.replace('\n', '<br />')
+	msg = msg.replace('\t', '&ensp;')
+
 	try:
 		with app.app_context():
 			socketio.emit('valmsg', {'msg': msg})

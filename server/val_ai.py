@@ -13,6 +13,7 @@ from overcooked_ai_py.mdp.actions import Action, Direction
 
 from htnparser.itl import InteractiveTaskLearner
 
+import html
 import sys
 import select
 import nltk
@@ -580,15 +581,26 @@ class ValAI():
 			# inp = input('Enter action: ').strip()
 			if self.need_inp:
 				# self.itl.save('val_model.pkl')
+				'''
 				msg = ''
-				msg = msg + '\tcurrently known actions:'
+				msg = msg + '\t<b>Currently known actions:</b>'
 				for ka in self.itl.known_actions():
-					msg = msg + '\t\t%s' % (ka.split(' - ')[0],)
-				msg = msg + ''
-				msg = msg + "\t(to teach new actions, just use them in a sentence, and I'll ask for clarification!)"
-				msg = msg + ''
-				msg = msg + 'What should I do?'
+					msg = msg + '\n\t\t<span style="font-family: monospace;">%s</span>' % (html.escape(ka.split(' - ')[0]),)
+				msg = msg + '\n'
+				msg = msg + "\t<i><small>(to teach new actions, just use them in a sentence, and I'll ask for clarification!)</small></i>"
+				msg = msg + '\n\nWhat should I do?'
+				'''
+
+				msg = '<b>Currently known actions:</b>'
+				kas = self.itl.known_actions()
+				for i in range(len(kas)):
+					ka = kas[i]
+					msg = msg + '\n\t\t%d. <code>%s</code>' % (i+1, html.escape(ka.split(' - ')[0]))
+				msg = msg + "\n\t<i><small>(to teach new actions, just use them in a sentence, and I'll ask for clarification!)</small></i>"
+				# msg = msg + "\n\nWhat should I do?"
+
 				self.out_fn(msg)
+				self.out_fn('What should I do?')
 				# self.out_fn('User: ', end='')
 				self.need_inp = False
 			# inp, onp, enp = select.select([sys.stdin], [], [], 5)
@@ -612,7 +624,7 @@ class ValAI():
 
 			def clarify_hook2(ua):
 				# inp = input('What do you mean by "%s"?: ' % (ua,))
-				self.out_fn('VAL: What are the steps of "%s"?' % (ua,))
+				self.out_fn('What are the steps of "<i>%s</i>"?' % (ua,))
 				# self.out_fn('\t(please give every step of the procedure as _one_ message)')
 				# self.out_fn('\t\t(e.g., "do X, then do Y, then do Z")')
 				# self.out_fn('User: ', end='')

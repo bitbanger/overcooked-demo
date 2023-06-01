@@ -35,7 +35,7 @@ class ChatParser:
 		self.gpt = GPTCompleter()
 
 	def wait_input(self, prompt):
-		self.out_fn(prompt, end='', flush=True)
+		self.out_fn(prompt)
 		inp = None
 		while not inp:
 			inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
@@ -69,7 +69,15 @@ class ChatParser:
 	def segment_text(self, text):
 		# SEGMENTS: 1. "cook an onion" (resolved pronouns: "cook an onion")
 		resp = self.gpt.get_chat_gpt_completion(self.segment_prompt%text)
-		self.out_fn('I think these are the individual actions of "%s":\n%s' % (text, indent(resp, 1)))
+		# self.out_fn('I think these are the individual actions of "%s":\n%s' % (text, indent(resp, 1)))
+		msg = 'I think these are the individual actions of "<i>%s</i>":' % (text,)
+		lines = resp.strip().split('\n')
+		for i in range(len(lines)):
+			line = lines[i]
+			resolved = line.split('"')[-2]
+			msg = msg + '\n\t%d. <i>%s</i>' % (i+1, resolved)
+		self.out_fn(msg)
+
 		segs = []
 		for line in resp.split('\n'):
 			segs.append(line.split('"')[5])
@@ -299,7 +307,7 @@ class ChatParser:
 					done = 'n' in self.wait_input('Are there any other steps for "%s"? (Y/N): ' % (action)).lower()
 					if done:
 						break
-					next_inp = self.wait_input('What comes next?: ')
+					next_inp = self.wait_input('What comes next?')
 					new_explanation = new_explanation + '. %s' % (next_inp)
 				self.out_fn('OK, got it!')
 				(_, rec_action_seq, rec_new_action_defs) = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook)

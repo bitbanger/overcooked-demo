@@ -2,15 +2,15 @@
 	margin-left: 0px;
 }
 
-#rightpanel {
-	float: right;
-	width: 50%;
-}
-
 #leftpanel {
 	float: left;
-	width: 50%;
-	height: 95vh;
+	width: calc(100% - 764.4px);
+	height: 90vh;
+}
+
+#rightpanel {
+	float: right;
+	width: 764.4px;
 }
 
 #clearingdiv {
