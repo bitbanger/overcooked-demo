@@ -18,7 +18,10 @@ PARA_FN = 'prompts/chat_paraphrase_ider.txt'
 VERB_FN = 'prompts/chat_verbalizer.txt'
 YESNO = r'''
 
-<button class="msger-yes-btn" value="Y">Yes</button><button class="msger-no-btn" value="N">No</button>'''
+<button class="msger-yes-btn" id="msger-yes-btn" value="Y">Yes</button><button class="msger-no-btn" id="msger-no-btn" value="N">No</button>'''
+ACTION_ARGS_OR_BOTH = r'''
+
+<button class="msger-no-btn" id="msger-bad-action-btn" value="action">Action</button><button class="msger-no-btn" id="msger-bad-args-btn" value="args">Objects</button><button class="msger-no-btn" id="msger-bad-both-btn" value="both">Both</button>'''
 
 def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
@@ -75,6 +78,7 @@ class ChatParser:
 	def segment_text(self, text):
 		# SEGMENTS: 1. "cook an onion" (resolved pronouns: "cook an onion")
 		resp = self.gpt.get_chat_gpt_completion(self.segment_prompt%text)
+		print('segment resp: %s' % (resp,))
 		# self.out_fn('I think these are the individual actions of "%s":\n%s' % (text, indent(resp, 1)))
 		msg = 'These are the individual steps of your command, right?\n'
 		lines = resp.strip().split('\n')
@@ -325,13 +329,17 @@ class ChatParser:
 					is_unknown = True
 				else:
 					# Yep, it's known!
+					# Now we'll try and confirm just the action.
 					while True:
-						known_prompt = 'I think that "<i>%s</i>" is the action <code>%s</code>' % (action, grounded)
+						known_prompt = 'I think that "<i>%s</i>" is the action <code>%s</code>.' % (action, grounded.split('(')[0])
 						known_prompt = known_prompt + '\n\nIs that right?'
 						known_prompt = known_prompt + YESNO
 						right = self.wait_input(known_prompt).strip().lower()
 						if 'y' not in right:
-							manual_msg = 'Sorry about that. Which of these is a better choice for "<i>%s</i>"?\n' % (action,)
+							# We didn't guess the right action.
+
+							# Form a correction request message
+							manual_msg = 'Which of these is a better choice for "<i>%s</i>"?\n' % (action,)
 							for ka in new_known_actions:
 								ka_val = html.escape(ka.split('(')[0])
 								ka_str = html.escape(ka.split(' - ')[0])
@@ -341,17 +349,40 @@ class ChatParser:
 							manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
 							manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
 
+							# Get the correction
 							manual_action = self.wait_input(manual_msg)
 							if manual_action == 'noGoodAction':
+								# The user wants to teach this one manually.
 								is_unknown = True
 								break
 
+							# The user chose a fitting known action. Pick args for it.
 							grounded = self.ground_action(new_known_actions, world_state, action, forced_action=manual_action)
-							if grounded == 'noGoodAction':
-								is_unknown = True
-								break
-						else:
-							break
+
+						# If we're here, it means either:
+						# 	1. the user agreed the action was right
+						# 	2. the user corrected the action to something specific
+						# In either case, "grounded" stores args we now have to check.
+						grounded_action = grounded.split('(')[0]
+						grounded_args = [x.strip() for x in grounded[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
+						grounded_args_fmt = ''
+						for gi in range(len(grounded_args)):
+							ga = grounded_args[gi]
+							if gi > 0:
+								if gi == len(grounded_args)-1:
+									grounded_args_fmt = grounded_args_fmt + ', and <code>%s</code>' % (ga)
+								else:
+									grounded_args_fmt = grounded_args_fmt + ', <code>%s</code>' % (ga)
+							else:
+								grounded_args_fmt = grounded_args_fmt + '<code>%s</code>' % (ga)
+						arg_prompt = 'OK, and the object%s of the action <code>%s</code> %s %s, right?%s' % ('' if len(grounded_args)==1 else 's', grounded_action, 'is' if len(grounded_args) == 1 else 'are', grounded_args_fmt, YESNO)
+						if len(grounded_args) == 0:
+							arg_prompt = 'OK, and there are no objects of the action <code>%s</code>, right?%s' % (grounded_action, YESNO)
+						if self.wait_input(arg_prompt) != 'Y':
+							# We didn't get the args right.
+							self.out_fn("OK, well, we won't deal with that right now. Sorry.")
+
+						break
 
 					if not is_unknown: # the loop may have set this to be true
 						args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]

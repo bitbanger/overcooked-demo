@@ -25,18 +25,27 @@ socket.on('valmsg', function(data) {
 $(document).ready(function() {
 	document.addEventListener('click', function(event) {
 		if(event.target) {
-			if ( (event.target.className == 'msger-yes-btn') || (event.target.className == 'msger-no-btn') ) {
-				// console.log(event.target.id);
+			var caught = true;
+
+			if (event.target.id == 'msger-yes-btn') {
+				socket.emit('message', {'msg': 'Y'});
+			} else if (event.target.id == 'msger-no-btn') {
+				socket.emit('message', {'msg': 'N'});
+			} else if (event.target.id == 'msger-bad-action-btn') {
+				socket.emit('message', {'msg': 'action'});
+			} else if (event.target.id == 'msger-bad-args-btn') {
+				socket.emit('message', {'msg': 'args'});
+			} else if (event.target.id == 'msger-bad-both-btn') {
+				socket.emit('message', {'msg': 'both'});
+			} else {
+				caught = false;
+			}
+
+			if (caught) {
 				event.preventDefault();
-				var msg = 'Y';
-				if (event.target.className == 'msger-no-btn') {
-					msg = 'N';
-				}
 				$(event.target).prop("disabled", true);
-				//$(event.target).css("background-color", "gray");
 				$(event.target).siblings(":button").prop("disabled", true);
 				$(event.target).siblings(":button").css("background-color", "gray");
-				socket.emit('message', {'msg': msg});
 			}
 		}
 	});
