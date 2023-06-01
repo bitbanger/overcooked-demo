@@ -504,7 +504,13 @@ class OvercookedGame(Game):
         # Synchronize individual player actions into a joint-action as required by overcooked logic
         for i in range(len(self.players)):
             try:
-                joint_action[i] = self.pending_actions[i].get(block=False)
+                try:
+                    joint_action[i] = self.pending_actions[i].get(block=False)
+                except AttributeError:
+                    if self.pending_actions[i] == 'EMPTY':
+                        pass
+                    print('errored out on pending_action %s (type %s)' % (self.pending_actions[i], type(self.pending_actions[i])))
+                    quit()
                 # print('updated action %s from player %d' % (joint_action[i], i))
             except Empty:
                 pass
