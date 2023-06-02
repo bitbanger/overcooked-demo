@@ -19,6 +19,12 @@ VERB_FN = 'prompts/chat_verbalizer.txt'
 YESNO = r'''
 
 <button class="msger-yes-btn" id="msger-yes-btn" value="Y">Yes</button><button class="msger-no-btn" id="msger-no-btn" value="N">No</button>'''
+CUSTOM_YESNO = r'''
+
+<button class="msger-yes-btn" id="msger-yes-btn" value="Y">%s</button><button class="msger-no-btn" id="msger-no-btn" value="N">%s</button>'''
+
+def yesno(yes_msg='Yes', no_msg='No'):
+	return CUSTOM_YESNO % (yes_msg.strip(), no_msg.strip())
 
 def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
@@ -86,6 +92,12 @@ class ChatParser:
 			msg = msg + '\n\t%d. <i>%s</i>' % (i+1, resolved)
 
 		msg = msg + YESNO
+
+		if len(lines) == 0:
+			# self.out_fn("I'm really sorry, but I wasn't able to understand that input. Could you please re-phrase it?")
+			self.out_fn("%s" % (html.escape(resp.strip())))
+			return None
+
 		ans = self.wait_input(msg)
 		if ans == 'N':
 			return None
@@ -402,44 +414,72 @@ class ChatParser:
 
 		return grounded
 
+	def confirm_no_good_action(self, kas, world_state, action_nl):
+		global GLOBAL_CHOICE_ID
+
+		confirm_msg = "I wasn't able to identify a known action for the command <i>%s</i>." % (action_nl,)
+		confirm_msg = confirm_msg + '\n\nWould you like to review the list of known actions to see if I made a mistake?'
+		confirm_msg = confirm_msg + yesno("Yes", "No; I'll teach you this new action")
+
+		if self.wait_input(confirm_msg) == 'N':
+			return 'noGoodAction'
+
+		clar_msg = 'Which of these is the best choice for "<i>%s</i>"?\n' % (action_nl,)
+		for ka in kas:
+			ka_val = html.escape(ka.split('(')[0])
+			ka_str = html.escape(ka.split(' - ')[0])
+			clar_msg = clar_msg + '\n<input type="radio" class="msger-act-radio" value="%s">' % (ka_val,)
+			clar_msg = clar_msg + '\t<label for="choice%d"><code>%s</code></label>' % (GLOBAL_CHOICE_ID, ka_str)
+			GLOBAL_CHOICE_ID += 1
+		clar_msg = clar_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
+		clar_msg = clar_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
+
+		choice = self.wait_input(clar_msg)
+		if choice == 'noGoodAction':
+			return choice
+
+		# The user chose an action, so we'll do a forced grounding for the args.
+		# The caller (handle_known_action) will handle arg confirmation.
+		return self.ground_action(kas, world_state, action_nl, forced_action=choice)
+
 	def handle_known_action(self, kas, orig_kas, world_state, action_nl):
 		grounded = self.ground_action(kas, world_state, action_nl)
-		if grounded == 'noGoodAction':
-			return 'noGoodAction'
-		else: # Known action?
-			pred = grounded.split('(')[0]
-			if pred not in [x.split('(')[0] for x in kas]:
-				# Nope, not a known action
+		user_chose_action = False
+		if grounded == 'noGoodAction' or (grounded.split('(')[0] not in [x.split('(')[0] for x in kas]):
+			# GPT couldn't come up with an action for this one,
+			# or it hallucinated one that we don't actually know yet.
+			# In either case, let's confirm with the user that we didn't
+			# just fail to identify a known action.
+			grounded = self.confirm_no_good_action(kas, world_state, action_nl)
+			if grounded == 'noGoodAction':
+				# Nothing doing; user confirms we're gonna teach this one
 				return 'noGoodAction'
 			else:
-				# Yep, it's known!
-				# Now we'll try and confirm the action.
-				while True:
-					if not self.confirm_guessed_action(action_nl, grounded):
-						grounded = self.user_corrects_action(kas, world_state, grounded, action_nl)
-						if grounded == 'noGoodAction':
-							# The user has decided to teach this one manually
-							return 'noGoodAction'
+				# The user chose this, so we don't need to confirm it.
+				user_chose_action = True
 
-					# If we're here, it means either:
-					# 	1. the user agreed the action was right
-					# 	2. the user corrected the action to something specific
-					# In either case, "grounded" stores args we now have to check.
-					(canonical_action, canonical_action_args) = self.get_canonical_action(kas, grounded)
-					(grounded_action, grounded_args) = self.action_and_args(grounded)
-					grounded_args_fmt = self.fmt_args(grounded_args)
+		# The action is known!
+		# Now we'll try and confirm it.
+		if (not user_chose_action) and (not self.confirm_guessed_action(action_nl, grounded)):
+			grounded = self.user_corrects_action(kas, world_state, grounded, action_nl)
+			if grounded == 'noGoodAction':
+				# The user has decided to teach this one manually
+				return 'noGoodAction'
 
-					grounded = self.user_corrects_args(kas, grounded)
+		# If we're here, it means either:
+		# 	1. the user agreed the action was right
+		# 	2. the user corrected the action to something specific
+		# In either case, "grounded" stores args we now have to check.
+		grounded = self.user_corrects_args(kas, grounded)
 
-					break
+		# The user has confirmed the action and the args.
+		# We're good to go!
+		pred = grounded.split('(')[0]
+		args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]
+		learned_or_known = 'known' if pred in [x.split('(')[0] for x in orig_kas] else 'learned'
 
-				# The user has confirmed the action and the args.
-				# We're good to go!
-				pred = grounded.split('(')[0]
-				args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]
-				learned_or_known = 'known' if pred in [x.split('(')[0] for x in orig_kas] else 'learned'
-				# action_seq.append(('known', pred, args))
-				return ('known', pred, args)
+		# TODO: uhh, should this use learned_or_known? idk
+		return ('known', pred, args)
 
 	# get_actions takes a list of known actions, a world state,
 	# and a textual description of an action sequence, and returns
@@ -468,7 +508,8 @@ class ChatParser:
 			action_segments = self.segment_text(text)
 			if action_segments is None:
 				if not within_clarify:
-					text = self.wait_input('Sorry about that. Would you mind re-phrasing the command, then, please?').strip()
+					# text = self.wait_input("Sorry, I guess I'm misunderstanding. Would you mind re-phrasing the command, please?").strip()
+					text = self.wait_input("Could you re-phrase that command, please?")
 					continue
 				else:
 					return RECLARIFY

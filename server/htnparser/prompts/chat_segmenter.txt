@@ -21,10 +21,10 @@ There's no need to respond to me with any other words. Let's start right away wi
 3. "eat an orange" (verb: "eat") (resolved pronouns: "eat an orange")
 4. "draw a picture" (verb: "draw") (resolved pronouns: "draw a picture")
 ***
-"Bring the pillow to the couch. Then put it on the couch. Then patrol the hallway, if you can."
+"Bring the pillow to the couch. Then floop it on the couch. Then patrol the hallway, if you can."
 ***
 1. "Bring the pillow to the couch" (verb: "bring") (resolved pronouns: "Bring the pillow to the couch")
-2. "put it on the couch" (verb: "put on") (resolved pronouns: "put the pillow on the couch")
+2. "floop it on the couch" (verb: "floop on") (resolved pronouns: "floop the pillow on the couch")
 3. "patrol the hallway" (verb: "patrol") (resolved pronouns: "patrol the hallway")
 ***
 "%s"
