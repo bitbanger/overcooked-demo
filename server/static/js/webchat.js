@@ -88,6 +88,37 @@ $(document).ready(function() {
 	});
 });
 
+$(document).ready(function() {
+	document.addEventListener('click', function(event) {
+		var template = '<select class="newargdropdown" id="newargdropdown"><option value="pot">pot</option><option value="onion">onion</option><option value="tomato">tomato</option><option value="dropoff">dropoff</option><option value="plate">plate</option></select>';
+
+		if(event.target) {
+			var caught = true;
+			if (event.target.className == "msger-add-btn") {
+				if($(event.target).parent().children(".whatever").children(".newargdropdown").size() > 0) {
+					$(event.target).parent().children(".whatever").children(".newargdropdown").last().after('<b> , </b>');
+				}
+
+				console.log($(event.target).parent().children(".whatever").children("b:nth-last-child(2)"));
+				$(event.target).parent().children(".whatever").children("b:nth-last-child(2)").after(template);
+			} else if (event.target.className == "msger-remove-btn") {
+				if($(event.target).parent().children(".whatever").children(".newargdropdown").size() > 1) {
+					$(event.target).parent().children(".whatever").children(".newargdropdown").last().remove();
+					$(event.target).parent().children(".whatever").children("b:nth-last-child(2)").remove();
+				} else {
+					$(event.target).parent().children(".whatever").children(".newargdropdown").last().remove();
+				}
+			} else {
+				caught = false;
+			}
+		}
+
+		if (caught) {
+			event.preventDefault();
+		}
+	});
+});
+
 msgerForm.addEventListener("submit", event => {
   event.preventDefault();
 

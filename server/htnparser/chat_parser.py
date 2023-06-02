@@ -495,6 +495,23 @@ class ChatParser:
 	# to the call.
 	def get_actions(self, known_actions, world_state, text, clarify_hook=None, within_clarify=False):
 		global GLOBAL_CHOICE_ID
+		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+		dropdown_template = '<select class="newargdropdown" id="newargdropdown">'
+		for o in objs:
+			dropdown_template = dropdown_template + '<option value="%s">%s</option>' % (o, o)
+		dropdown_template = dropdown_template + '</select>'
+
+		dropdowns = [dropdown_template]*3
+
+		print(dropdown_template)
+
+		action = 'test'
+		new_args = 'test'
+		mmsg = 'I think that these are the arguments of "%s": <form class="whatever" id="whatever"><code>%s</code> <b>(</b> %s <b>)</b> </form>' % (action, new_args, '<b> , </b>'.join(dropdowns))
+		mmsg = mmsg + '<button class="msger-add-btn">\t+\t</button>'
+		mmsg = mmsg + '<button class="msger-remove-btn">\t-\t</button>'
+
+		self.out_fn(mmsg)
 
 		if clarify_hook is None:
 			clarify_hook = lambda a: self.wait_input('\nWhat do you mean by "%s"?: ' % (a,))
@@ -564,7 +581,23 @@ class ChatParser:
 				new_pred_and_args = self.ground_new_args(action, subtree_objects)
 				new_pred = new_pred_and_args.split('(')[0]
 				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',')]
-				self.out_fn('I think that these are the arguments of "%s": %s' % (action, new_args))
+
+
+				objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+				dropdown_template = '<select class="argdropdown" id="dropdown%d">'
+				for o in objs:
+					dropdown_template = dropdown_template + '<option value="%s">%s</option>' % (o, o)
+				dropdown_template = dropdown_template + '</select>'
+
+				dropdowns = []
+				for _ in range(3):
+					dropdowns.append(dropdown_template%GLOBAL_CHOICE_ID)
+					GLOBAL_CHOICE_ID += 1
+
+				self.out_fn('I think that these are the arguments of "%s": %s <form id="whatever">%s</form>' % (action, new_args, '\n'.join(dropdowns)))
+				# new_args = self.confirm_new_args(new_pred, new_args)
+
+
 				new_pred_and_args_gen = '%s(%s)' % (new_pred, ', '.join([('<arg%d>' % (i+1)) for i in range(len(new_args))]))
 
 				# Add all new, learned actions in the decomposition
