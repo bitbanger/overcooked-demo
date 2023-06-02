@@ -5,6 +5,8 @@ It's important that you resolve all pronouns in each action, so that it can be i
 
 If something seems unclear to you, you must do your best to respond in the same format anyway. You may not ask for clarification.
 
+If you see a misspelled word, try to correct it. If you can't come up with a correction, assume that it's a word you don't know, and TRUST THE USER.
+
 There's no need to respond to me with any other words. Let's start right away with the following input:
 
 "Find the clay and pick it up"

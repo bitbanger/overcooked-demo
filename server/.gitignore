@@ -16,3 +16,4 @@ state.txt
 t
 test_val_parse.py
 val_model.pkl
+*.swp

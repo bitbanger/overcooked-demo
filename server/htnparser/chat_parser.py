@@ -264,7 +264,182 @@ class ChatParser:
 		self.out_fn('OK, got it!')
 
 		return new_explanation
-		
+
+	def get_canonical_action(self, kas, grounded):
+		canonical_action_desc = [x for x in kas if x.split('(')[0] == grounded.split('(')[0]][0].split(' - ')[0].strip()
+		canonical_action = canonical_action_desc.split('(')[0]
+		canonical_action_args = [x.strip() for x in canonical_action_desc[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
+
+		return (canonical_action, canonical_action_args)
+
+	def action_and_args(self, pred_str):
+		action = pred_str.split('(')[0]
+		args = [x.strip() for x in pred_str[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
+
+		return (action, args)
+
+	def fmt_args(self, args):
+		args_fmt = ''
+		for gi in range(len(args)):
+			ga = args[gi]
+			if gi > 0:
+				if gi == len(args)-1:
+					args_fmt = args_fmt + ', and <code>%s</code>' % (ga)
+				else:
+					args_fmt = args_fmt + ', <code>%s</code>' % (ga)
+			else:
+				args_fmt = args_fmt + '<code>%s</code>' % (ga)
+
+		return args_fmt
+
+	def confirm_guessed_args(self, action, args):
+		args_fmt = self.fmt_args(args)
+		arg_prompt = 'OK, and the object%s of the action <code>%s</code> %s %s, right?%s' % ('' if len(args)==1 else 's', action, 'is' if len(args) == 1 else 'are', args_fmt, YESNO)
+
+		return self.wait_input(arg_prompt) == 'Y'
+
+	def confirm_guessed_action(self, action_nl, pred_str):
+		(guessed_action, _) = self.action_and_args(pred_str)
+		known_prompt = 'I think that "<i>%s</i>" is the action <code>%s</code>.' % (action_nl, guessed_action)
+		known_prompt = known_prompt + '\n\nIs that right?'
+		known_prompt = known_prompt + YESNO
+
+		return self.wait_input(known_prompt) == 'Y'
+
+	def maybe_arg_error_msg(self, kas, grounded):
+		# First, get the canonical action description from our list and compare arg
+		# parities. If the parities are wrong, we don't even have to ask.
+		(canonical_action, canonical_action_args) = self.get_canonical_action(kas, grounded)
+		(grounded_action, grounded_args) = self.action_and_args(grounded)
+		grounded_args_fmt = self.fmt_args(grounded_args)
+
+		# If the actual argument takes no args, there's no real point in prompting them to assign
+		# any, and informing them of the mismatch seems like a waste of time/screen space.
+		parity_oks_args = (len(canonical_action_args) == len(grounded_args)) or len(canonical_action_args) == 0
+		user_oks_args = True
+
+		if parity_oks_args and len(canonical_action_args) > 0:
+			user_oks_args = self.confirm_guessed_args(grounded_action, grounded_args)
+
+		obj_maybe_plur = 'objects' if len(canonical_action_args) != 1 else 'object'
+		err_msg = ''
+		if not parity_oks_args:
+			# TODO: even if we don't show them, compare the corrected list to whatever we've got here for partial credit
+			if len(grounded_args) == 0:
+				err_msg = "Sorry, but <code>%s</code> has %d object slots, and I'm not sure what to put in them. Could you please clarify which %s to put in those slots?" % (grounded_action, len(grounded_args), obj_maybe_plur)
+			elif len(grounded_args) == 1:
+				err_msg = 'Sorry, I thought you wanted me to do this action on just the object %s, but <code>%s</code> has %d object slots. Could you please clarify which %s to put in those slots?' % (grounded_args_fmt, grounded_action, len(canonical_action_args), obj_maybe_plur)
+			else:
+				err_msg = 'Sorry, I thought you wanted me to do this action on the %d objects %s, but <code>%s</code> has %d object slots. Could you please clarify which %s to put in those slots?' % (len(grounded_args), grounded_args_fmt, grounded_action, len(canonical_action_args), obj_maybe_plur)
+		if not user_oks_args:
+			err_msg = "Sorry about that. Could you help me pick the actual %s?" % (obj_maybe_plur,)
+
+		return err_msg
+
+	def user_corrects_args(self, kas, grounded):
+		global GLOBAL_CHOICE_ID
+
+		err_msg = self.maybe_arg_error_msg(kas, grounded)
+
+		if err_msg != '':
+			# We didn't get the args right.
+
+			# Start forming a request for arg binding.
+			objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+
+			(canonical_action, canonical_action_args) = self.get_canonical_action(kas, grounded)
+
+			dropdown_template = '<select class="argdropdown" id="dropdown%d">'
+			for o in objs:
+				dropdown_template = dropdown_template + '<option value="%s">%s</option>' % (o, o)
+			dropdown_template = dropdown_template + '</select>'
+
+			slots = canonical_action_args
+			print('slot: %s' % (slots,))
+
+			new_args_msg = err_msg + '\n\n'
+			action_str = '<code>%s</code><b>(</b> ' % canonical_action
+			for s_i in range(len(slots)):
+				if s_i > 0:
+					action_str = action_str + ' <b>,</b> '
+				action_str = action_str + (dropdown_template % GLOBAL_CHOICE_ID)
+				GLOBAL_CHOICE_ID += 1
+			action_str = action_str + ' <b>)</b>'
+			new_args_msg = new_args_msg + action_str
+
+			new_args_msg = '<form id="argdropdownform">%s\n\n<input type="submit" class="msger-yes-btn"></form>'  % (new_args_msg,)
+
+			selection = self.wait_input(new_args_msg)
+			print('got selection %s' % (selection,))
+			parsed_new_args = selection.strip().split('\t')
+			grounded = grounded.split('(')[0] + '(' + ','.join(parsed_new_args) + ')'
+
+		return grounded
+
+	def user_corrects_action(self, kas, world_state, grounded, action_nl):
+		global GLOBAL_CHOICE_ID
+		# We didn't guess the right action.
+
+		# Form a correction request message
+		manual_msg = 'Which of these is a better choice for "<i>%s</i>"?\n' % (action_nl,)
+		for ka in kas:
+			ka_val = html.escape(ka.split('(')[0])
+			ka_str = html.escape(ka.split(' - ')[0])
+			manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="%s">' % (ka_val,)
+			manual_msg = manual_msg + '\t<label for="choice%d"><code>%s</code></label>' % (GLOBAL_CHOICE_ID, ka_str)
+			GLOBAL_CHOICE_ID += 1
+		manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
+		manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
+
+		# Get the correction
+		manual_action = self.wait_input(manual_msg)
+		if manual_action == 'noGoodAction':
+			# The user wants to teach this one manually.
+			return manual_action
+
+		# The user chose a fitting known action. Pick args for it.
+		grounded = self.ground_action(kas, world_state, action_nl, forced_action=manual_action)
+
+		return grounded
+
+	def handle_known_action(self, kas, orig_kas, world_state, action_nl):
+		grounded = self.ground_action(kas, world_state, action_nl)
+		if grounded == 'noGoodAction':
+			return 'noGoodAction'
+		else: # Known action?
+			pred = grounded.split('(')[0]
+			if pred not in [x.split('(')[0] for x in kas]:
+				# Nope, not a known action
+				return 'noGoodAction'
+			else:
+				# Yep, it's known!
+				# Now we'll try and confirm the action.
+				while True:
+					if not self.confirm_guessed_action(action_nl, grounded):
+						grounded = self.user_corrects_action(kas, world_state, grounded, action_nl)
+						if grounded == 'noGoodAction':
+							# The user has decided to teach this one manually
+							return 'noGoodAction'
+
+					# If we're here, it means either:
+					# 	1. the user agreed the action was right
+					# 	2. the user corrected the action to something specific
+					# In either case, "grounded" stores args we now have to check.
+					(canonical_action, canonical_action_args) = self.get_canonical_action(kas, grounded)
+					(grounded_action, grounded_args) = self.action_and_args(grounded)
+					grounded_args_fmt = self.fmt_args(grounded_args)
+
+					grounded = self.user_corrects_args(kas, grounded)
+
+					break
+
+				# The user has confirmed the action and the args.
+				# We're good to go!
+				pred = grounded.split('(')[0]
+				args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]
+				learned_or_known = 'known' if pred in [x.split('(')[0] for x in orig_kas] else 'learned'
+				# action_seq.append(('known', pred, args))
+				return ('known', pred, args)
 
 	# get_actions takes a list of known actions, a world state,
 	# and a textual description of an action sequence, and returns
@@ -297,14 +472,6 @@ class ChatParser:
 					continue
 				else:
 					return RECLARIFY
-			
-		# print('SEGMENTS: %s' % action_segments)
-
-		# Now try to ground out each one. If it works,
-		# we can just be done with it.
-		# grounded = []
-		# for action in action_segments:
-			# grounded.append(self.ground_action(known_actions, action))
 
 		new_known_actions = known_actions[::]
 
@@ -312,144 +479,14 @@ class ChatParser:
 		# recursively define the unknown "noGoodAction"s.
 		for i in range(len(action_segments)):
 			action = action_segments[i]
-			grounded = self.ground_action(new_known_actions, world_state, action)
-			# print('new_known_actions: %s' % (new_known_actions,))
-			# print('"%s" GROUNDED TO %s' % (action, grounded))
-			is_unknown = False
-			if grounded == 'noGoodAction':
-				is_unknown = True
-			else: # Known action?
-				pred = grounded.split('(')[0]
-				# print('pred is %s, new_known_actions are %s' % (pred, [x.split('(')[0] for x in new_known_actions]))
-				if pred not in [x.split('(')[0] for x in new_known_actions]:
-					# Nope, not a known action
-					is_unknown = True
-				else:
-					# Yep, it's known!
-					# Now we'll try and confirm just the action.
-					while True:
-						known_prompt = 'I think that "<i>%s</i>" is the action <code>%s</code>.' % (action, grounded.split('(')[0])
-						known_prompt = known_prompt + '\n\nIs that right?'
-						known_prompt = known_prompt + YESNO
-						right = self.wait_input(known_prompt).strip().lower()
-						if 'y' not in right:
-							# We didn't guess the right action.
 
-							# Form a correction request message
-							manual_msg = 'Which of these is a better choice for "<i>%s</i>"?\n' % (action,)
-							for ka in new_known_actions:
-								ka_val = html.escape(ka.split('(')[0])
-								ka_str = html.escape(ka.split(' - ')[0])
-								manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="%s">' % (ka_val,)
-								manual_msg = manual_msg + '\t<label for="choice%d"><code>%s</code></label>' % (GLOBAL_CHOICE_ID, ka_str)
-								GLOBAL_CHOICE_ID += 1
-							manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
-							manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
-
-							# Get the correction
-							manual_action = self.wait_input(manual_msg)
-							if manual_action == 'noGoodAction':
-								# The user wants to teach this one manually.
-								is_unknown = True
-								break
-
-							# The user chose a fitting known action. Pick args for it.
-							grounded = self.ground_action(new_known_actions, world_state, action, forced_action=manual_action)
-
-						# If we're here, it means either:
-						# 	1. the user agreed the action was right
-						# 	2. the user corrected the action to something specific
-						# In either case, "grounded" stores args we now have to check.
-
-						# First, get the canonical action description from our list and compare arg
-						# parities. If the parities are wrong, we don't even have to ask.
-						canonical_action_desc = [x for x in new_known_actions if x.split('(')[0] == grounded.split('(')[0]][0].split(' - ')[0].strip()
-						canonical_action = canonical_action_desc.split('(')[0]
-						canonical_action_args = [x.strip() for x in canonical_action_desc[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
-
-						grounded_action = grounded.split('(')[0]
-						grounded_args = [x.strip() for x in grounded[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
-						grounded_args_fmt = ''
-						for gi in range(len(grounded_args)):
-							ga = grounded_args[gi]
-							if gi > 0:
-								if gi == len(grounded_args)-1:
-									grounded_args_fmt = grounded_args_fmt + ', and <code>%s</code>' % (ga)
-								else:
-									grounded_args_fmt = grounded_args_fmt + ', <code>%s</code>' % (ga)
-							else:
-								grounded_args_fmt = grounded_args_fmt + '<code>%s</code>' % (ga)
-
-						print('grounded is %s, canonical action args are %s, grounded args are %s' % (grounded, canonical_action_args, grounded_args))
-
-						# If the actual argument takes no args, there's no real point in prompting them to assign
-						# any, and informing them of the mismatch seems like a waste of time/screen space.
-						parity_oks_args = (len(canonical_action_args) == len(grounded_args)) or len(canonical_action_args) == 0
-						user_oks_args = True
-
-						if parity_oks_args and len(grounded_args) > 0:
-							arg_prompt = 'OK, and the object%s of the action <code>%s</code> %s %s, right?%s' % ('' if len(grounded_args)==1 else 's', grounded_action, 'is' if len(grounded_args) == 1 else 'are', grounded_args_fmt, YESNO)
-							# if len(grounded_args) == 0:
-								# arg_prompt = 'OK, and there are no objects of the action <code>%s</code>, right?%s' % (grounded_action, YESNO)
-
-							user_oks_args = (self.wait_input(arg_prompt) == 'Y')
-
-						err_msg = ''
-						if not parity_oks_args:
-							# TODO: even if we don't show them, compare the corrected list to whatever we've got here for partial credit
-							obj_maybe_plur = 'objects' if len(canonical_action_args) != 1 else 'object'
-							if len(grounded_args) == 0:
-								err_msg = "Sorry, but <code>%s</code> has %d object slots, and I'm not sure what to put in them. Could you please clarify which %s to put in those slots?" % (grounded_action, len(grounded_args), obj_maybe_plur)
-							elif len(grounded_args) == 1:
-								err_msg = 'Sorry, I thought you wanted me to do this action on just the object %s, but <code>%s</code> has %d object slots. Could you please clarify which %s to put in those slots?' % (grounded_args_fmt, grounded_action, len(canonical_action_args), obj_maybe_plur)
-							else:
-								err_msg = 'Sorry, I thought you wanted me to do this action on the %d objects %s, but <code>%s</code> has %d object slots. Could you please clarify which %s to put in those slots?' % (len(grounded_args), grounded_args_fmt, grounded_action, len(canonical_action_args), obj_maybe_plur)
-						if not user_oks_args:
-							err_msg = "Sorry about that. Could you help me pick the actual objects?"
-						if err_msg != '':
-							# We didn't get the args right.
-
-							# Start forming a request for arg binding.
-							objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
-
-							dropdown_template = '<select class="argdropdown" id="dropdown%d">'
-							for o in objs:
-								dropdown_template = dropdown_template + '<option value="%s">%s</option>' % (o, o)
-							dropdown_template = dropdown_template + '</select>'
-
-							slots = canonical_action_args
-							print('slot: %s' % (slots,))
-
-							new_args_msg = err_msg + '\n\n'
-							action_str = '<code>%s</code><b>(</b> ' % canonical_action
-							for s_i in range(len(slots)):
-								if s_i > 0:
-									action_str = action_str + ' <b>,</b> '
-								action_str = action_str + (dropdown_template % GLOBAL_CHOICE_ID)
-								GLOBAL_CHOICE_ID += 1
-							action_str = action_str + ' <b>)</b>'
-							new_args_msg = new_args_msg + action_str
-
-							new_args_msg = '<form id="argdropdownform">%s\n\n<input type="submit" class="msger-yes-btn"></form>'  % (new_args_msg,)
-
-							selection = self.wait_input(new_args_msg)
-							print('got selection %s' % (selection,))
-							parsed_new_args = selection.strip().split('\t')
-							grounded = grounded.split('(')[0] + '(' + ','.join(parsed_new_args) + ')'
-
-						break
-
-					if not is_unknown: # the loop may have set this to be true
-						pred = grounded.split('(')[0]
-						args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]
-						learned_or_known = 'known' if pred in [x.split('(')[0] for x in known_actions] else 'learned'
-						action_seq.append(('known', pred, args))
-			# print('known? %s' % ('no' if is_unknown else 'yes'))
-			if is_unknown: # New, unknown action
+			maybe_known_action = self.handle_known_action(new_known_actions, known_actions, [], action)
+			if maybe_known_action != 'noGoodAction': # Known action; add it!
+				action_seq.append(maybe_known_action)
+			else: # New, unknown action
 				# Get a name for it.
 				new_name = self.name_action(action)
 
-				# (_, rec_action_seq, rec_new_action_defs) = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, within_clarify=True)
 				(rec_action_seq, rec_new_action_defs) = (None, None)
 				res = RECLARIFY
 				while res == RECLARIFY:
@@ -488,8 +525,6 @@ class ChatParser:
 				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',')]
 				self.out_fn('I think that these are the arguments of "%s": %s' % (action, new_args))
 				new_pred_and_args_gen = '%s(%s)' % (new_pred, ', '.join([('<arg%d>' % (i+1)) for i in range(len(new_args))]))
-
-				# print('NEW ACTION LEARNED: %s' % (new_pred_and_args))
 
 				# Add all new, learned actions in the decomposition
 				# to the known actions list and the task definition
