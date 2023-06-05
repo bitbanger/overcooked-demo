@@ -60,6 +60,9 @@ class ChatParser:
 
 		# print('returning "%s" (type %s)' % (inp, type(inp)))
 
+		if inp == '#NONE#':
+			inp = ''
+
 		return inp
 
 	@staticmethod

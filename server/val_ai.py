@@ -94,6 +94,8 @@ class ValAI():
 		if inp:
 			# inp = self.in_stream.readline().strip()
 			inp = self.in_stream.get().strip()
+			if inp == '#NONE#':
+				inp = ''
 			return inp
 		else:
 			return None

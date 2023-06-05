@@ -515,7 +515,12 @@ def on_message(msg):
 	print('got message:')
 	print(msg)
 	# in_stream_w.write(msg['msg'].strip() + '\n')
-	in_queue.put(msg['msg'].strip())
+	if msg['msg'].strip() == '':
+		print('putting none')
+		in_queue.put('#NONE#')
+	else:
+		print('putting %s' % (msg['msg'].strip(),))
+		in_queue.put(msg['msg'].strip())
 
 @socketio.on('yesno')
 def on_message(msg):
@@ -523,7 +528,10 @@ def on_message(msg):
 	print('got y/n ans:')
 	print(msg)
 	# in_stream_w.write(msg['msg'].strip() + '\n')
-	in_queue.put(msg['msg'].strip())
+	if msg['msg'].strip() == '':
+		in_queue.put('#NONE#')
+	else:
+		in_queue.put(msg['msg'].strip())
 
 @socketio.on('connect')
 def on_connect():
