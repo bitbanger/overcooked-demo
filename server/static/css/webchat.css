@@ -217,6 +217,21 @@ body {
 .msger-remove-btn:hover {
   background: rgb(180, 18, 18);
 }
+.msger-submit-btn {
+  margin-left: 10px;
+  background: rgb(0, 196, 65);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.23s;
+  padding: 5px;
+  border: none;
+  border-radius: 3px;
+  font-size: 1em;
+}
+.msger-submit-btn:hover {
+  background: rgb(0, 180, 50);
+}
 
 .msger-chat {
   background-color: #fcfcfe;

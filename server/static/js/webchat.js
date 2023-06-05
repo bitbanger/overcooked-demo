@@ -69,7 +69,7 @@ $(document).ready(function() {
 	document.addEventListener('submit', function(event) {
 		if(event.target) {
 			if (event.target.id == "argdropdownform") {
-				event.preventDefault();
+				event.preventdefault();
 				var str = '';
 				$(event.target).children('.argdropdown').each(function() {
 					str = str + '\t' + $(this).val();
@@ -83,6 +83,21 @@ $(document).ready(function() {
 				// $(event.target).prop("disabled", true);
 				// $(event.target).siblings(".msger-act-radio").prop("disabled", true);
 				// socket.emit('message', {'msg': event.target.value});
+			} else if (event.target.className == "newargdropdownform") {
+				event.preventDefault();
+				var str = '';
+				$(event.target).children('.newargdropdown').each(function() {
+					str = str + '\t' + $(this).val();
+				});
+				socket.emit('message', {'msg': str});
+
+				$(event.target).children('.newargdropdown').prop("disabled", true);
+				$(event.target).children('.msger-add-btn').prop("disabled", true);
+				$(event.target).children('.msger-add-btn').css("background-color", "gray");
+				$(event.target).children('.msger-remove-btn').prop("disabled", true);
+				$(event.target).children('.msger-remove-btn').css("background-color", "gray");
+				$(event.target).children('.msger-submit-btn').prop("disabled", true);
+				$(event.target).children('.msger-submit-btn').css("background-color", "gray");
 			}
 		}
 	});
@@ -95,18 +110,17 @@ $(document).ready(function() {
 		if(event.target) {
 			var caught = true;
 			if (event.target.className == "msger-add-btn") {
-				if($(event.target).parent().children(".whatever").children(".newargdropdown").size() > 0) {
-					$(event.target).parent().children(".whatever").children(".newargdropdown").last().after('<b> , </b>');
+				if($(event.target).parent().children(".newargdropdown").size() > 0) {
+					$(event.target).parent().children(".newargdropdown").last().after('<b class="comma"> , </b>');
 				}
 
-				console.log($(event.target).parent().children(".whatever").children("b:nth-last-child(2)"));
-				$(event.target).parent().children(".whatever").children("b:nth-last-child(2)").after(template);
+				$(event.target).parent().children("b.rightparen").before(template);
 			} else if (event.target.className == "msger-remove-btn") {
-				if($(event.target).parent().children(".whatever").children(".newargdropdown").size() > 1) {
-					$(event.target).parent().children(".whatever").children(".newargdropdown").last().remove();
-					$(event.target).parent().children(".whatever").children("b:nth-last-child(2)").remove();
+				if($(event.target).parent().children(".newargdropdown").size() > 1) {
+					$(event.target).parent().children(".newargdropdown").last().remove();
+					$(event.target).parent().children("b.comma").last().remove();
 				} else {
-					$(event.target).parent().children(".whatever").children(".newargdropdown").last().remove();
+					$(event.target).parent().children(".newargdropdown").last().remove();
 				}
 			} else {
 				caught = false;

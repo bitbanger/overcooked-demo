@@ -388,6 +388,41 @@ class ChatParser:
 
 		return grounded
 
+	def user_corrects_new_args(self, action_nl, action_pred, guessed_args):
+		# ask
+		msg = 'I think these are the objects of "<i>%s</i>":' % (action_nl,)
+		msg = msg + '\n\n<code>%s</code> <b> ( </b> %s <b> ) </b>' % (action_pred, '<b> , </b>'.join([('<code>%s</code>' % x) for x in guessed_args]))
+		msg = msg + '\n\nIs that right?' + YESNO
+		if self.wait_input(msg) == 'Y':
+			return guessed_args
+
+		# correct
+		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+
+		dropdowns = []
+		for ga in guessed_args:
+			dropdown = '<select class="newargdropdown" id="newargdropdown">'
+			for o in objs:
+				if o == ga:
+					dropdown = dropdown + '<option value="%s" selected="selected">%s</option>' % (o, o)
+				else:
+					dropdown = dropdown + '<option value="%s">%s</option>' % (o, o)
+			dropdown = dropdown + '</select>'
+			dropdowns.append(dropdown)
+			
+
+		action = 'test'
+		new_args = 'test'
+		mmsg = 'Sorry about that. Could you help me pick the right objects?\n\n<form class="newargdropdownform" id="whatever"><code>%s</code> <b class="leftparen">(</b> %s <b class="rightparen">)</b>' % (action_pred, '<b class="comma"> , </b>'.join(dropdowns))
+		mmsg = mmsg + '\n<button class="msger-add-btn">\t+\t</button>'
+		mmsg = mmsg + '<button class="msger-remove-btn">\t-\t</button>'
+
+		mmsg = mmsg + '\n\n<input type="submit" class="msger-submit-btn"></input></form>'
+
+		new_args = [x.strip() for x in self.wait_input(mmsg).split('\t') if len(x.strip()) > 0]
+
+		return new_args
+
 	def user_corrects_action(self, kas, world_state, grounded, action_nl):
 		global GLOBAL_CHOICE_ID
 		# We didn't guess the right action.
@@ -495,23 +530,6 @@ class ChatParser:
 	# to the call.
 	def get_actions(self, known_actions, world_state, text, clarify_hook=None, within_clarify=False):
 		global GLOBAL_CHOICE_ID
-		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
-		dropdown_template = '<select class="newargdropdown" id="newargdropdown">'
-		for o in objs:
-			dropdown_template = dropdown_template + '<option value="%s">%s</option>' % (o, o)
-		dropdown_template = dropdown_template + '</select>'
-
-		dropdowns = [dropdown_template]*3
-
-		print(dropdown_template)
-
-		action = 'test'
-		new_args = 'test'
-		mmsg = 'I think that these are the arguments of "%s": <form class="whatever" id="whatever"><code>%s</code> <b>(</b> %s <b>)</b> </form>' % (action, new_args, '<b> , </b>'.join(dropdowns))
-		mmsg = mmsg + '<button class="msger-add-btn">\t+\t</button>'
-		mmsg = mmsg + '<button class="msger-remove-btn">\t-\t</button>'
-
-		self.out_fn(mmsg)
 
 		if clarify_hook is None:
 			clarify_hook = lambda a: self.wait_input('\nWhat do you mean by "%s"?: ' % (a,))
@@ -583,20 +601,7 @@ class ChatParser:
 				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',')]
 
 
-				objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
-				dropdown_template = '<select class="argdropdown" id="dropdown%d">'
-				for o in objs:
-					dropdown_template = dropdown_template + '<option value="%s">%s</option>' % (o, o)
-				dropdown_template = dropdown_template + '</select>'
-
-				dropdowns = []
-				for _ in range(3):
-					dropdowns.append(dropdown_template%GLOBAL_CHOICE_ID)
-					GLOBAL_CHOICE_ID += 1
-
-				self.out_fn('I think that these are the arguments of "%s": %s <form id="whatever">%s</form>' % (action, new_args, '\n'.join(dropdowns)))
-				# new_args = self.confirm_new_args(new_pred, new_args)
-
+				new_args = self.user_corrects_new_args(action, new_pred, new_args)
 
 				new_pred_and_args_gen = '%s(%s)' % (new_pred, ', '.join([('<arg%d>' % (i+1)) for i in range(len(new_args))]))
 
