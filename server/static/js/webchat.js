@@ -19,7 +19,17 @@ const BOT_NAME = "VAL";
 const PERSON_NAME = "You";
 
 socket.on('valmsg', function(data) {
-	botResponse(data['msg']);
+	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	if (data['id'] == webmuxid) {
+		botResponse(data['msg']);
+	}
+});
+
+$(document).ready(function() {
+	console.log('setting id');
+	var id = Math.floor(Math.random() * 10000000);
+	socket.emit('setwebmuxid', {'id': id});
+	$(document).children('html').children('head').append('<data value="' + id + '" />');
 });
 
 $(document).ready(function() {

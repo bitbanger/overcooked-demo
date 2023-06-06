@@ -577,10 +577,6 @@ class OvercookedGame(Game):
             t.start()
 
     def deactivate(self):
-        print('deactivate called')
-        x = 1
-        x -= 1
-        print(3/x)
         super(OvercookedGame, self).deactivate()
         # Ensure the background consumers do not hang
         for npc_policy in self.npc_policies:
@@ -612,6 +608,7 @@ class OvercookedGame(Game):
         # return HTNAI(self)
         # return ManualAI(self)
         try:
+            print('making new valAI')
             return ValAI(self, in_stream=self.in_stream, out_fn=self.out_fn)
         except Exception as e:
             print(repr(e))

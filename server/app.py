@@ -116,9 +116,11 @@ handler = logging.FileHandler(LOGFILE)
 handler.setLevel(logging.ERROR)  
 app.logger.addHandler(handler)  
 
+game_id_to_webmux = dict()
 chat_buf_lock = Lock()
-def chat_out_fn(msg):
+def chat_out_fn(msg, game_id=None):
 	global chat_buf_lock
+	global game_id_to_webmux
 	chat_buf_lock.acquire()
 
 	msg = msg.replace('\n', '<br />')
@@ -126,7 +128,7 @@ def chat_out_fn(msg):
 
 	try:
 		with app.app_context():
-			socketio.emit('valmsg', {'msg': msg})
+			socketio.emit('valmsg', {'msg': msg, 'id': game_id_to_webmux[game_id]})
 	finally:
 		chat_buf_lock.release()
 
@@ -150,7 +152,9 @@ def try_create_game(game_name ,**kwargs):
         curr_id = FREE_IDS.get(block=False)
         assert FREE_MAP[curr_id], "Current id is already in use"
         game_cls = GAME_NAME_TO_CLS.get(game_name, OvercookedGame)
-        game = game_cls(id=curr_id, in_stream=in_queue, out_fn=chat_out_fn, **kwargs)
+        # game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), out_fn=chat_out_fn, **kwargs)
+        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), **kwargs)
+        game.out_fn = lambda msg: chat_out_fn(msg, game_id=game.id)
     except queue.Empty:
         err = RuntimeError("Server at max capacity")
         return None, err
@@ -422,6 +426,14 @@ def debug():
 # happen once at the beginning. Thus, socket events are used for all game updates, where more rapid
 # communication is needed
 
+@socketio.on('setwebmuxid')
+def on_setwebmuxid(data):
+	global game_id_to_webmux
+
+	game_id = get_curr_game(request.sid).id
+	print('id for %s is: %s' % (game_id, data['id'],))
+	game_id_to_webmux[game_id] = data['id']
+
 @socketio.on('create')
 def on_create(data):
     user_id = request.sid
@@ -484,6 +496,7 @@ def on_join(data):
 
 @socketio.on('leave')
 def on_leave(data):
+    print('on_leave called')
     user_id = request.sid
     with USERS[user_id]:
         was_active = _leave_game(user_id)
@@ -507,31 +520,34 @@ def on_action(data):
 # in_stream = io.StringIO()
 # in_stream = open('valdialog', 'w+', buffering=-1)
 # os.mkfifo('./valdialog')
-in_queue = multiprocessing.Queue()
+# in_queue = multiprocessing.Queue()
 
 @socketio.on('message')
 def on_message(msg):
-	global in_queue
 	print('got message:')
 	print(msg)
+
+	val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
+
 	# in_stream_w.write(msg['msg'].strip() + '\n')
 	if msg['msg'].strip() == '':
 		print('putting none')
-		in_queue.put('#NONE#')
+		val_ai.in_stream.put('#NONE#')
 	else:
 		print('putting %s' % (msg['msg'].strip(),))
-		in_queue.put(msg['msg'].strip())
+		val_ai.in_stream.put(msg['msg'].strip())
 
 @socketio.on('yesno')
 def on_message(msg):
-	global in_queue
+	val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
+
 	print('got y/n ans:')
 	print(msg)
 	# in_stream_w.write(msg['msg'].strip() + '\n')
 	if msg['msg'].strip() == '':
-		in_queue.put('#NONE#')
+		val_ai.in_stream.put('#NONE#')
 	else:
-		in_queue.put(msg['msg'].strip())
+		val_ai.in_stream.put(msg['msg'].strip())
 
 @socketio.on('connect')
 def on_connect():
