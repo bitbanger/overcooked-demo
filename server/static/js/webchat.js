@@ -68,7 +68,7 @@ $(document).ready(function() {
 $(document).ready(function() {
 	document.addEventListener('submit', function(event) {
 		if(event.target) {
-			if (event.target.id == "argdropdownform") {
+			if (event.target.className == "argdropdownform") {
 				event.preventdefault();
 				var str = '';
 				$(event.target).children('.argdropdown').each(function() {
@@ -98,6 +98,8 @@ $(document).ready(function() {
 				$(event.target).children('.msger-remove-btn').css("background-color", "gray");
 				$(event.target).children('.msger-submit-btn').prop("disabled", true);
 				$(event.target).children('.msger-submit-btn').css("background-color", "gray");
+			} else {
+				console.log('submit from target ' + event.target);
 			}
 		}
 	});

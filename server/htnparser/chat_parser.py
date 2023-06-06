@@ -382,7 +382,7 @@ class ChatParser:
 			action_str = action_str + ' <b>)</b>'
 			new_args_msg = new_args_msg + action_str
 
-			new_args_msg = '<form id="argdropdownform">%s\n\n<input type="submit" class="msger-yes-btn"></form>'  % (new_args_msg,)
+			new_args_msg = '<form class="argdropdownform" id="argdropdownform">%s\n\n<input type="submit" class="msger-yes-btn"></form>'  % (new_args_msg,)
 
 			selection = self.wait_input(new_args_msg)
 			print('got selection %s' % (selection,))
