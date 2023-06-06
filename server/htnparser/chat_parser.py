@@ -106,7 +106,7 @@ class ChatParser:
 			return None
 
 		segs = []
-		for line in resp.split('\n'):
+		for line in lines:
 			segs.append(line.split('"')[-2])
 
 		return segs
@@ -561,24 +561,31 @@ class ChatParser:
 
 			maybe_known_action = self.handle_known_action(new_known_actions, known_actions, [], action)
 			if maybe_known_action != 'noGoodAction': # Known action; add it!
-				action_seq.append(maybe_known_action)
+				yield maybe_known_action
 			else: # New, unknown action
 				# Get a name for it.
 				new_name = self.name_action(action)
 
-				(rec_action_seq, rec_new_action_defs) = (None, None)
+				(rec_action_seq, rec_new_action_defs) = ([], None)
 				res = RECLARIFY
 				while res == RECLARIFY:
 					# Get a full task definition for it.
 					new_explanation = self.get_steps_for_clarify(action, clarify_hook)
 					res = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, within_clarify=True)
+
 					if res == RECLARIFY:
 						# Some substep of get_actions failed, so we're taking a step all the way back here.
 						# This happens most often with a failed action segmentation, which is bad enough to
 						# require a reset.
 						self.out_fn("Sorry about that. Let's take a step back and try again so I can understand better.")
 					else:
-						(_, rec_action_seq, rec_new_action_defs) = res
+						# (_, rec_action_seq, rec_new_action_defs) = res
+						for elem in res:
+							if type(elem) == dict:
+								rec_new_action_defs = elem
+							else:
+								yield elem
+								rec_action_seq.append(elem)
 
 				# Extract the set of all argument objects in the subtree for
 				# the next step, described immediately below.
@@ -621,7 +628,8 @@ class ChatParser:
 				# future calls, update the task definition dict, and
 				# add the new predicate to the action sequence.
 				new_known_actions.append(new_pred_and_args_gen + ' - a learned action')
-				action_seq.append(['learned', new_pred, new_args])
+				# action_seq.append(['learned', new_pred, new_args])
+				yield ['learned', new_pred, new_args]
 				new_action_defs[new_pred.lower()] = (rec_action_seq, new_args)
 
 		# Since child calls in the recursion will see the "new known actions"
@@ -638,7 +646,8 @@ class ChatParser:
 					new_seq.append(nest)
 			new_action_defs[new_pred] = (new_seq, new_action_defs[new_pred][1])
 
-		return (None, action_seq, new_action_defs)
+		yield new_action_defs
+		# return (None, action_seq, new_action_defs)
 
 if __name__ == '__main__':
 	parser = ChatParser()

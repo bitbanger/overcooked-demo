@@ -54,13 +54,12 @@ class InteractiveTaskLearner:
 	# the parser, and just for terseness, we're abstracting the
 	# parser call into this member method.
 	def parse(self, instruction, clarify_hook=None):
-		(action_seq, new_actions) = (None, None)
 		if clarify_hook:
-			(_, action_seq, new_actions) = self.parser.get_actions(self.known_actions(), None, instruction, clarify_hook=clarify_hook)
+			for elem in self.parser.get_actions(self.known_actions(), None, instruction, clarify_hook=clarify_hook):
+				yield elem
 		else:
-			(_, action_seq, new_actions) = self.parser.get_actions(self.known_actions(), None, instruction)
-
-		return (action_seq, new_actions)
+			for elem in self.parser.get_actions(self.known_actions(), None, instruction):
+				yield elem
 
 	def linearize_plan(self, plan, in_bindings=dict()):
 		leaves = []
@@ -70,6 +69,7 @@ class InteractiveTaskLearner:
 
 			# If any of our args have been bound, use the values instead
 			args = [bindings[arg].strip() if arg in bindings else arg.strip() for arg in args]
+			args = [arg for arg in args if len(arg) > 0]
 
 			# Add leaf actions to the linearization
 			if name.lower() not in self.gen_task_knowledge:
@@ -134,20 +134,23 @@ class InteractiveTaskLearner:
 		# dictionary mapping all non-terminal actions
 		# to their definitions (new_actions), grounding
 		# out with entirely terminal (primitive) actions.
-		(action_seq, new_actions) = self.parse(instruction, clarify_hook=clarify_hook)
-
-		# Generalize the learned actions, abstracting
-		# out specific arguments.
-		for learned_name in new_actions:
-			print("\nOK, I've learned how to '%s'!" % (learned_name))
-			(substeps, arg_names) = new_actions[learned_name]
-			self.generalize_learned_action((learned_name, substeps, arg_names))
-
-		# Linearize the plan by applying the argument-binding
-		# action sequence from the parser to the generalized
-		# task knowledge and extracting the sequence of all
-		# primitive actions.
-		return self.linearize_plan(action_seq)
+		for elem in self.parse(instruction, clarify_hook=clarify_hook):
+			if type(elem) == dict:
+				new_actions = elem
+				# Generalize the learned actions, abstracting
+				# out specific arguments.
+				for learned_name in new_actions:
+					print("\nOK, I've learned how to '%s'!" % (learned_name))
+					(substeps, arg_names) = new_actions[learned_name]
+					self.generalize_learned_action((learned_name, substeps, arg_names))
+			else:
+				# Linearize the plan by applying the argument-binding
+				# action sequence from the parser to the generalized
+				# task knowledge and extracting the sequence of all
+				# primitive actions.
+				# return self.linearize_plan(action_seq)
+				for step in self.linearize_plan([elem]):
+					yield step
 
 	def save(self, filename):
 		with open(filename, 'wb+') as f:

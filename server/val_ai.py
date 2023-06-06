@@ -1,5 +1,6 @@
 from copy import deepcopy
 from json import dumps
+from more_itertools import peekable
 from select import select
 from threading import Thread
 from time import sleep
@@ -56,7 +57,7 @@ class ValAI():
 
 		self.collect_state_after_action = False
 		self.state_snapshots = []
-		self.last_inp_queue_size = 0
+		# self.last_inp_queue_size = 0
 
 		self.state_dirty_bit = False
 		self.state_hash = None
@@ -572,16 +573,17 @@ class ValAI():
 			self.state_snapshots.append(self.build_state_dict())
 
 		# inp = input('Enter action: ').strip()
-		if len(self.inp_queue) == 1 and self.inp_queue[0] == 'SENTINEL':
+		# if len(self.inp_queue) == 1 and self.inp_queue[0] == 'SENTINEL':
 			# print('%d states for %d actions' % (len(self.state_snapshots), self.last_inp_queue_size))
 			# for i in range(len(self.old_inp_queue)-1):
 				# print('ACTION: %s' % (self.old_inp_queue[i],))
 				# print('\tSTATE: %s' % (self.state_snapshots[i+1],))
 				# self.state_diff(self.state_snapshots[i], self.state_snapshots[i+1])
-			self.inp_queue = []
-			self.old_inp_queue = []
-			self.state_snapshots = []
-		if len(self.inp_queue) == 0:
+			# self.inp_queue = []
+			# self.old_inp_queue = []
+			# self.state_snapshots = []
+		# if len(self.inp_queue) == 0:
+		if not self.inp_queue:
 			# inp = input('Enter action: ').strip()
 			if self.need_inp:
 				# self.itl.save('val_model.pkl')
@@ -646,14 +648,16 @@ class ValAI():
 
 				return inp
 
-			self.inp_queue = self.itl.process_instruction(inp, clarify_hook=clarify_hook2) + ['SENTINEL']
-			self.old_inp_queue = self.inp_queue[:]
-			self.last_inp_queue_size = len(self.inp_queue)-1
+			# self.inp_queue = self.itl.process_instruction(inp, clarify_hook=clarify_hook2) + ['SENTINEL']
+			self.inp_queue = peekable(self.itl.process_instruction(inp, clarify_hook=clarify_hook2))
+			# self.old_inp_queue = self.inp_queue[:]
+			# self.last_inp_queue_size = len(self.inp_queue)-1
 			self.state_snapshots.append(self.build_state_dict())
 
 		sleep(1.5)
-		inp = self.inp_queue[0]
-		self.inp_queue = self.inp_queue[1:]
+		# inp = self.inp_queue[0]
+		# self.inp_queue = self.inp_queue[1:]
+		inp = next(self.inp_queue)
 		# print('PULLING %s from inp_queue' % (inp,))
 
 
