@@ -117,6 +117,7 @@ handler.setLevel(logging.ERROR)
 app.logger.addHandler(handler)  
 
 game_id_to_webmux = dict()
+sid_to_webmux = dict()
 chat_buf_lock = Lock()
 def chat_out_fn(msg, game_id=None):
 	global chat_buf_lock
@@ -152,9 +153,7 @@ def try_create_game(game_name ,**kwargs):
         curr_id = FREE_IDS.get(block=False)
         assert FREE_MAP[curr_id], "Current id is already in use"
         game_cls = GAME_NAME_TO_CLS.get(game_name, OvercookedGame)
-        # game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), out_fn=chat_out_fn, **kwargs)
-        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), **kwargs)
-        game.out_fn = lambda msg: chat_out_fn(msg, game_id=game.id)
+        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_id), **kwargs)
     except queue.Empty:
         err = RuntimeError("Server at max capacity")
         return None, err
@@ -283,6 +282,10 @@ def _create_game(user_id, game_name, params={}):
     if not game:
         emit("creation_failed", { "error" : err.__repr__() })
         return
+
+    global game_id_to_webmux
+    game_id_to_webmux[game.id] = sid_to_webmux[user_id]
+
     spectating = True
     with game.lock:
         if not game.is_full():
@@ -428,11 +431,9 @@ def debug():
 
 @socketio.on('setwebmuxid')
 def on_setwebmuxid(data):
-	global game_id_to_webmux
+	global sid_to_webmux
 
-	game_id = get_curr_game(request.sid).id
-	print('id for %s is: %s' % (game_id, data['id'],))
-	game_id_to_webmux[game_id] = data['id']
+	sid_to_webmux[request.sid] = data['id']
 
 @socketio.on('create')
 def on_create(data):

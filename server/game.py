@@ -6,10 +6,11 @@ from overcooked_ai_py.mdp.overcooked_mdp import OvercookedGridworld
 from overcooked_ai_py.mdp.overcooked_env import OvercookedEnv
 from overcooked_ai_py.mdp.actions import Action, Direction
 from overcooked_ai_py.planning.planners import MotionPlanner, NO_COUNTERS_PARAMS
-from human_aware_rl.rllib.rllib import load_agent
+# from human_aware_rl.rllib.rllib import load_agent
 import random, os, pickle, json
 import ray
 import sys
+import traceback
 
 # from htn_ai import HTNAI
 # from manual_ai import ManualAI
@@ -612,6 +613,8 @@ class OvercookedGame(Game):
             return ValAI(self, in_stream=self.in_stream, out_fn=self.out_fn)
         except Exception as e:
             print(repr(e))
+            traceback.print_exc()
+        '''
         if npc_id.lower().startswith("rllib"):
             try:
                 # Loading rllib agents requires additional helpers
@@ -631,6 +634,7 @@ class OvercookedGame(Game):
                     return pickle.load(f)
             except Exception as e:
                 raise IOError("Error loading agent\n{}".format(e.__repr__()))
+        '''
 
 
 class OvercookedPsiturk(OvercookedGame):
