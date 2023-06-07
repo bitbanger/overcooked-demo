@@ -99,7 +99,7 @@ class ChatParser:
 			retrying = False
 			# print('prompt was %s' % prompt)
 			for line in resp.split('\n'):
-				if 'resolved' in line:
+				if '(resolved pronouns:' in line:
 					found_one = True
 					full_lines.append(line.strip())
 					lines.append(line.strip().split('"')[-2])
@@ -202,6 +202,9 @@ class ChatParser:
 			# chosen_ka = known_actions[choice].split('(')[0]
 			chosen_ka = known_actions[choice].split('-')[0].strip()
 
+		if '(' in chosen_ka:
+			chosen_ka = chosen_ka.split('(')[0].strip()
+
 		return chosen_ka
 
 	def choose_action_args(self, chosen_action, world_state, action):
@@ -210,8 +213,9 @@ class ChatParser:
 			return chosen_action
 
 		obj_str = '[pot, onion, tomato, dropoff, plate]'
+		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
 
-		num_args = len(chosen_action.split(','))
+		num_args = len(chosen_action.split(',')) if ',' in chosen_action else 0
 
 		num_args_str = '%d argument%s' % (num_args, '' if num_args==1 else 's')
 		num_objs_str = '%d object%s' % (num_args, '' if num_args==1 else 's')
@@ -223,6 +227,12 @@ class ChatParser:
 		prompt = self.preselect_prompt % (chosen_action, action, obj_str, chosen_action, num_args_str, num_objs_str, pred_name, o_list)
 
 		resp = self.gpt.get_chat_gpt_completion(prompt).strip()
+		if len(resp) >= 2 and resp[0] == '"' and resp[-1] == '"':
+			resp = resp[1:-1]
+
+		if resp.lower()[:len(chosen_action)] != chosen_action.lower() or resp[len(chosen_action)] != '(' or resp[-1] != ')':
+			print('resp was %s, sadly; c.f. %s' % (resp.lower(), chosen_action.lower()))
+			return None
 
 		if '"' in resp:
 			resp = resp.replace('"', '').strip()
@@ -232,20 +242,59 @@ class ChatParser:
 		# prompt_inp = '1. %s\n2. %s\n3. "%s"' % (ka_str, obj_str, action)
 		# prompt = self.act_prompt % prompt_inp
 
-	def ground_action(self, known_actions, world_state, action, forced_action=None):
-		chosen_action_pred = forced_action
-		if forced_action is None:
-			chosen_action_pred = self.choose_action_pred(known_actions, world_state, action)
+	def ground_action(self, known_actions, world_state, action):
+		chosen_action_pred = self.choose_action_pred(known_actions, world_state, action)
+		print('chose pred %s' % chosen_action_pred)
 
-		if chosen_action_pred == 'noGoodAction':
-			return 'noGoodAction'
+		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
 
+		if (chosen_action_pred == 'noGoodAction' or chosen_action_pred not in [x.split('(')[0] for x in known_actions]):
+			# Case 1: no ID'd action
+			chosen_action_pred = self.confirm_no_good_action(known_actions, world_state, action)
+			if chosen_action_pred == 'noGoodAction':
+				# User confirms they want to teach this
+				return 'noGoodAction'
+			# The user either confirmed it or picked the right one,
+			# so we'll move on now
+		elif not self.confirm_guessed_action(action, chosen_action_pred):
+			# Case 2: we did ID an action, but the user didn't confirm it
+			chosen_action_pred = self.user_corrects_action(known_actions, world_state, action)
+			if chosen_action_pred == 'noGoodAction':
+				# User decides they want to teach this
+				return 'noGoodAction'
+		else:
+			# Case 3: nothing to see here; all good! :)
+			pass
+
+		# Now that we have an action, let's pick some args
 		chosen_action_args = self.choose_action_args(chosen_action_pred, world_state, action)
+
+		(_, canonical_action_args) = self.get_canonical_action(known_actions, chosen_action_pred+'()')
+
+		err_msg = ''
+		if chosen_action_args is None:
+			# The arg grounder failed. We'll ask for some manually.
+
+			err_msg = "Sorry, but I wasn't able to figure out what objects go with the action <code>%s</code> here. Could you help me choose them?"%chosen_action_pred
+			chosen_action_args = chosen_action_pred + '(' + ','.join([objs[0] for _ in range(len(canonical_action_args))]) + ')'
+		else:
+			# The arg grounder was wrong. We'll ask for corrections.
+			err_msg = self.maybe_arg_error_msg(known_actions, chosen_action_args)
+
+		if err_msg != '':
+			# There was an error with the args, or the user
+			# didn't confirm. Ask for manual corrections.
+			chosen_action_args = self.user_corrects_args(known_actions, chosen_action_args, err_msg=err_msg)
+
+		arg_lst = [x.strip() for x in chosen_action_args[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
+		if len(arg_lst) > 0 and len(canonical_action_args) == 0:
+			# shhhhhh...it's fine
+			chosen_action_args = chosen_action_pred + '()'
 
 		# If we were forced, by the user, to pick an action, don't bother
 		# using GPT to find out if it's a good paraphrase; they *told us* it was.
-		if (forced_action is None) and (not self.is_paraphrase(action, chosen_action_args)):
-			return 'noGoodAction'
+		# if not self.is_paraphrase(action, chosen_action_args):
+			# return 'noGoodAction'
 
 		return chosen_action_args
 
@@ -348,8 +397,7 @@ class ChatParser:
 
 		return self.wait_input(arg_prompt) == 'Y'
 
-	def confirm_guessed_action(self, action_nl, pred_str):
-		(guessed_action, _) = self.action_and_args(pred_str)
+	def confirm_guessed_action(self, action_nl, guessed_action):
 		known_prompt = 'I think that "<i>%s</i>" is the action <code>%s</code>.' % (action_nl, guessed_action)
 		known_prompt = known_prompt + '\n\nIs that right?'
 		known_prompt = known_prompt + YESNO
@@ -386,10 +434,11 @@ class ChatParser:
 
 		return err_msg
 
-	def user_corrects_args(self, kas, grounded):
+	def user_corrects_args(self, kas, grounded, err_msg=''):
 		global GLOBAL_CHOICE_ID
 
-		err_msg = self.maybe_arg_error_msg(kas, grounded)
+		if err_msg == '':
+			err_msg = self.maybe_arg_error_msg(kas, grounded)
 
 		if err_msg != '':
 			# We didn't get the args right.
@@ -461,7 +510,7 @@ class ChatParser:
 
 		return new_args
 
-	def user_corrects_action(self, kas, world_state, grounded, action_nl):
+	def user_corrects_action(self, kas, world_state, action_nl):
 		global GLOBAL_CHOICE_ID
 		# We didn't guess the right action.
 
@@ -483,9 +532,10 @@ class ChatParser:
 			return manual_action
 
 		# The user chose a fitting known action. Pick args for it.
-		grounded = self.ground_action(kas, world_state, action_nl, forced_action=manual_action)
+		# grounded = self.ground_action(kas, world_state, action_nl, forced_action=manual_action)
+		# return grounded
 
-		return grounded
+		return manual_action
 
 	def confirm_no_good_action(self, kas, world_state, action_nl):
 		global GLOBAL_CHOICE_ID
@@ -511,13 +561,18 @@ class ChatParser:
 		if choice == 'noGoodAction':
 			return choice
 
+		print('user chose %s' % (choice,))
+
 		# The user chose an action, so we'll do a forced grounding for the args.
 		# The caller (handle_known_action) will handle arg confirmation.
-		return self.ground_action(kas, world_state, action_nl, forced_action=choice)
+		return choice
+		# return self.ground_action(kas, world_state, action_nl, forced_action=choice)
 
 	def handle_known_action(self, kas, orig_kas, world_state, action_nl):
 		grounded = self.ground_action(kas, world_state, action_nl)
 		user_chose_action = False
+
+		'''
 		if grounded == 'noGoodAction' or (grounded.split('(')[0] not in [x.split('(')[0] for x in kas]):
 			# GPT couldn't come up with an action for this one,
 			# or it hallucinated one that we don't actually know yet.
@@ -544,11 +599,16 @@ class ChatParser:
 		# 	2. the user corrected the action to something specific
 		# In either case, "grounded" stores args we now have to check.
 		grounded = self.user_corrects_args(kas, grounded)
+		'''
+
+		if grounded == 'noGoodAction':
+			# The user has decided to teach this one manually
+			return 'noGoodAction'
 
 		# The user has confirmed the action and the args.
 		# We're good to go!
 		pred = grounded.split('(')[0]
-		args = [x.strip() for x in grounded.split('(')[1][:-1].split(',')]
+		args = [x.strip() for x in grounded.split('(')[1][:-1].split(',') if len(x.strip()) > 0]
 		learned_or_known = 'known' if pred in [x.split('(')[0] for x in orig_kas] else 'learned'
 
 		# TODO: uhh, should this use learned_or_known? idk
@@ -566,7 +626,7 @@ class ChatParser:
 	# a recursive call to itself on new input. When the process concludes,
 	# all new actions will be groundable in terms of actions known prior
 	# to the call.
-	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None):
+	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0):
 		global GLOBAL_CHOICE_ID
 
 		if clarify_hook is None:
@@ -628,6 +688,7 @@ class ChatParser:
 
 			maybe_known_action = self.handle_known_action(new_known_actions, known_actions, [], action)
 			if maybe_known_action != 'noGoodAction': # Known action; add it!
+				print('level %d yielding known %s' % (level, maybe_known_action))
 				yield maybe_known_action
 			else: # New, unknown action
 				# Get a name for it.
@@ -639,7 +700,7 @@ class ChatParser:
 					# Get a full task definition for it.
 					# new_explanation = self.get_steps_for_clarify(action, clarify_hook)
 					new_explanation = clarify_hook(action)
-					res = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, clarify_action=action)
+					res = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, clarify_action=action, level=level+1)
 
 					if res == RECLARIFY:
 						# Some substep of get_actions failed, so we're taking a step all the way back here.
@@ -652,6 +713,7 @@ class ChatParser:
 							if type(elem) == dict:
 								rec_new_action_defs = elem
 							else:
+								print('level %d elem-yielding %s' % (level, elem))
 								yield elem
 								rec_action_seq.append(elem)
 
@@ -676,7 +738,7 @@ class ChatParser:
 				# e.g., to output put(onion, pot) instead of put(pot, onion).
 				new_pred_and_args = self.ground_new_args(action, subtree_objects)
 				new_pred = new_pred_and_args.split('(')[0]
-				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',')]
+				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',') if len(x.strip()) > 0]
 
 
 				new_args = self.user_corrects_new_args(action, new_pred, new_args)
@@ -697,6 +759,7 @@ class ChatParser:
 				# add the new predicate to the action sequence.
 				new_known_actions.append(new_pred_and_args_gen + ' - a learned action')
 				# action_seq.append(['learned', new_pred, new_args])
+				print('level %d yielding %s' % (level, ['learned', new_pred, new_args],))
 				yield ['learned', new_pred, new_args]
 				new_action_defs[new_pred.lower()] = (rec_action_seq, new_args)
 
