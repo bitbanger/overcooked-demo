@@ -22,6 +22,9 @@ YESNO = r'''
 CUSTOM_YESNO = r'''
 
 <button class="msger-yes-btn" id="msger-yes-btn" value="Y">%s</button><button class="msger-no-btn" id="msger-no-btn" value="N">%s</button>'''
+YESNOADD = r'''
+
+<button class="msger-yes-btn" id="msger-yes-btn" value="Y">Yes</button><button class="msger-maybe-btn" id="msger-maybe-btn" value="M">Add more steps</button><button class="msger-no-btn" id="msger-no-btn" value="N">No, something's wrong</button>'''
 
 def yesno(yes_msg='Yes', no_msg='No'):
 	return CUSTOM_YESNO % (yes_msg.strip(), no_msg.strip())
@@ -81,35 +84,67 @@ class ChatParser:
 	# segment_text("find an onion and go to it")
 	# ==
 	# ["find an onion", "go to the onion"]
-	def segment_text(self, text):
-		# SEGMENTS: 1. "cook an onion" (resolved pronouns: "cook an onion")
-		resp = self.gpt.get_chat_gpt_completion(self.segment_prompt%text)
-		print('segment resp: %s' % (resp,))
-		# self.out_fn('I think these are the individual actions of "%s":\n%s' % (text, indent(resp, 1)))
+	def segment_text(self, text, full_output=False, pre_segs=[]):
+		prompt = self.segment_prompt%text
+		if len(pre_segs) > 0:
+			for pre_seg in pre_segs:
+				prompt = prompt + '\n***%s******'%pre_seg.strip()
+		lines = []
+		full_lines = []
+		done = False
+		for i in range(20):
+			resp = self.gpt.get_chat_gpt_completion(prompt).strip()
+			print('segment resp %d. %s' % (i, resp))
+			found_one = False
+			retrying = False
+			# print('prompt was %s' % prompt)
+			for line in resp.split('\n'):
+				if 'resolved' in line:
+					found_one = True
+					full_lines.append(line.strip())
+					lines.append(line.strip().split('"')[-2])
+					if 'unacceptable' in prompt.split('\n')[-1]:
+						prompt = '\n'.join(prompt.split('\n')[:-2])
+					prompt = prompt + '\n***%s******' % (line.strip(),)
+					break
+				if 'unclear' in line or 'invalid' in line or 'valid' in line:
+					# I hate modern technology. This is as ridiculous as it is effective.
+					prompt = prompt + '\n%s'%line.strip()
+					prompt = prompt + "\n***Look, see, that's unacceptable. Your only job is to do your best to interpret this input. You're being insensitive and incompetent. Try again, and stop telling me you can't do it. If you say you can't do it again, I'll be really mad."
+					retrying = True
+					break
+				if 'DONE' in line:
+					done = True
+					break
+			if not found_one and not retrying:
+				# no action found; stop here and verify?
+				# or should we note what happened?
+				done = True
+				break
+		if not done and len(lines) == 50:
+			# too many actions
+			self.out_fn("I identified too many actions in that text snippet. Right now, I'm limited to 50. Could you please define some simpler actions and then use those instead?")
+			return None
+
+		if full_output:
+			return full_lines
+		else:
+			return lines
+
+	def confirm_segments(self, lines, clarify_action=None):
 		msg = 'These are the individual steps of your command, right?\n'
-		lines = resp.strip().split('\n')
-		lines = [l for l in lines if 'resolved pronouns' in l]
+		if clarify_action:
+			msg = 'So, is this a correct task description for "<i>%s</i>"?"\n'%clarify_action.strip()
+
 		for i in range(len(lines)):
-			line = lines[i]
-			resolved = line.split('"')[-2]
-			msg = msg + '\n\t%d. <i>%s</i>' % (i+1, resolved)
+			msg = msg + '\n\t%d. <i>%s</i>' % (i+1, lines[i])
 
-		msg = msg + YESNO
+		if clarify_action:
+			msg = msg + YESNOADD
+		else:
+			msg = msg + YESNO
 
-		if len(lines) == 0:
-			# self.out_fn("I'm really sorry, but I wasn't able to understand that input. Could you please re-phrase it?")
-			self.out_fn("%s" % (html.escape(resp.strip())))
-			return None
-
-		ans = self.wait_input(msg)
-		if ans == 'N':
-			return None
-
-		segs = []
-		for line in lines:
-			segs.append(line.split('"')[-2])
-
-		return segs
+		return self.wait_input(msg)
 
 	# name_action takes a single action description of the sort
 	# returned by segment_text and produces a predicate name for
@@ -531,7 +566,7 @@ class ChatParser:
 	# a recursive call to itself on new input. When the process concludes,
 	# all new actions will be groundable in terms of actions known prior
 	# to the call.
-	def get_actions(self, known_actions, world_state, text, clarify_hook=None, within_clarify=False):
+	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None):
 		global GLOBAL_CHOICE_ID
 
 		if clarify_hook is None:
@@ -541,9 +576,12 @@ class ChatParser:
 		new_action_defs = {}
 
 		# First, segment the actions
+		'''
 		action_segments = None
 		while action_segments is None:
-			action_segments = self.segment_text(text)
+			full_action_segments = self.segment_text(text, full_output=True)
+			action_segments = [x.split('"')[-2] for x in full_action_segments]
+
 			if action_segments is None:
 				if not within_clarify:
 					# text = self.wait_input("Sorry, I guess I'm misunderstanding. Would you mind re-phrasing the command, please?").strip()
@@ -551,6 +589,35 @@ class ChatParser:
 					continue
 				else:
 					return RECLARIFY
+		'''
+		seg_inp = text[::]
+		pre_segs = []
+		while True:
+			full_action_segments = pre_segs + self.segment_text(seg_inp, full_output=True, pre_segs=pre_segs)
+			if full_action_segments is None:
+				seg_inp = self.wait_input("Sorry, I wasn't able to identify any actions in that message. Would you mind re-phrasing, please?").strip()
+				continue
+
+			action_segments = [x.split('"')[-2] for x in full_action_segments]
+
+			choice = None
+			if clarify_action:
+				choice = self.confirm_segments(action_segments, clarify_action=clarify_action)
+			else:
+				choice = self.confirm_segments(action_segments)
+
+			if choice == 'Y':
+				# user said we're good to go
+				break
+			elif choice == 'M':
+				# user wants to add more
+				pre_segs = pre_segs + full_action_segments
+				seg_inp = seg_inp + '. ' + self.wait_input("OK, what comes next?")
+				continue
+			else:
+				# user wants us to retry
+				seg_inp = self.wait_input("Sorry, I guess I got that wrong. Would you mind re-phrasing, please?").strip()
+				continue
 
 		new_known_actions = known_actions[::]
 
@@ -570,8 +637,9 @@ class ChatParser:
 				res = RECLARIFY
 				while res == RECLARIFY:
 					# Get a full task definition for it.
-					new_explanation = self.get_steps_for_clarify(action, clarify_hook)
-					res = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, within_clarify=True)
+					# new_explanation = self.get_steps_for_clarify(action, clarify_hook)
+					new_explanation = clarify_hook(action)
+					res = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, clarify_action=action)
 
 					if res == RECLARIFY:
 						# Some substep of get_actions failed, so we're taking a step all the way back here.

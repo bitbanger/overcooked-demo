@@ -90,12 +90,14 @@ class GPTCompleter:
 
 	def get_chat_gpt_completion_helper(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None):
 		print('.', end='')
-		prompt_msgs = [x.strip() for x in prompt.split('***') if len(x.strip()) > 0]
+		# prompt_msgs = [x.strip() for x in prompt.split('***') if len(x.strip()) > 0]
+		prompt_msgs = [x.strip() for x in prompt.split('***')]
 		annotated_msgs = []
 		role = 'user'
 		other_role = 'assistant'
 		for msg in prompt_msgs[::-1]:
-			annotated_msgs = [{'role': role, 'content': msg.strip()}] + annotated_msgs
+			if len(msg) > 0:
+				annotated_msgs = [{'role': role, 'content': msg.strip()}] + annotated_msgs
 			(role, other_role) = (other_role, role)
 
 		# print('RAW MSGS:')

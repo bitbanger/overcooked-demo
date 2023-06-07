@@ -189,6 +189,22 @@ body {
   background: rgb(180, 18, 18);
 }
 
+.msger-maybe-btn {
+  margin-left: 10px;
+  background: rgb(210, 189, 0);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.23s;
+  padding: 10px;
+  border: none;
+  border-radius: 3px;
+  font-size: 1em;
+}
+.msger-maybe-btn:hover {
+  background: rgb(190, 174, 0);
+}
+
 .msger-add-btn {
   margin-left: 3px;
   background: rgb(0, 196, 65);

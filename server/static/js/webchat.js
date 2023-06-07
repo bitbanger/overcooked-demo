@@ -41,6 +41,8 @@ $(document).ready(function() {
 				socket.emit('message', {'msg': 'Y'});
 			} else if (event.target.id == 'msger-no-btn') {
 				socket.emit('message', {'msg': 'N'});
+			} else if (event.target.id == 'msger-maybe-btn') {
+				socket.emit('message', {'msg': 'M'});
 			} else if (event.target.id == 'msger-bad-action-btn') {
 				socket.emit('message', {'msg': 'action'});
 			} else if (event.target.id == 'msger-bad-args-btn') {
@@ -79,7 +81,7 @@ $(document).ready(function() {
 	document.addEventListener('submit', function(event) {
 		if(event.target) {
 			if (event.target.className == "argdropdownform") {
-				event.preventdefault();
+				event.preventDefault();
 				var str = '';
 				$(event.target).children('.argdropdown').each(function() {
 					str = str + '\t' + $(this).val();
@@ -108,8 +110,6 @@ $(document).ready(function() {
 				$(event.target).children('.msger-remove-btn').css("background-color", "gray");
 				$(event.target).children('.msger-submit-btn').prop("disabled", true);
 				$(event.target).children('.msger-submit-btn').css("background-color", "gray");
-			} else {
-				console.log('submit from target ' + event.target);
 			}
 		}
 	});
