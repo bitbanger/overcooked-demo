@@ -207,20 +207,18 @@ class ChatParser:
 
 		return chosen_ka
 
-	def choose_action_args(self, chosen_action, world_state, action):
+	def choose_action_args(self, chosen_action, world_state, action, num_args):
 		if '()' in chosen_action:
-			# print('RETURNING %s' % (chosen_action,))
 			return chosen_action
 
 		obj_str = '[pot, onion, tomato, dropoff, plate]'
 		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
 
-		num_args = len(chosen_action.split(',')) if ',' in chosen_action else 0
-
 		num_args_str = '%d argument%s' % (num_args, '' if num_args==1 else 's')
 		num_objs_str = '%d object%s' % (num_args, '' if num_args==1 else 's')
 
-		pred_name = chosen_action.split('(')[0]
+		# pred_name = chosen_action.split('(')[0]
+		pred_name = chosen_action
 
 		o_list = ', '.join([('o%d' % (i+1)) for i in range(num_args)])
 
@@ -266,10 +264,10 @@ class ChatParser:
 			# Case 3: nothing to see here; all good! :)
 			pass
 
-		# Now that we have an action, let's pick some args
-		chosen_action_args = self.choose_action_args(chosen_action_pred, world_state, action)
-
 		(_, canonical_action_args) = self.get_canonical_action(known_actions, chosen_action_pred+'()')
+
+		# Now that we have an action, let's pick some args
+		chosen_action_args = self.choose_action_args(chosen_action_pred, world_state, action, len(canonical_action_args))
 
 		err_msg = ''
 		if chosen_action_args is None:
