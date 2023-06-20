@@ -8,6 +8,8 @@ if __name__ == '__main__':
 else:
 	from .gpt_completer import GPTCompleter
 
+CONFIRM_GPT = True
+
 RECLARIFY = 'RECLARIFY'
 GLOBAL_CHOICE_ID = 0
 ACT_FN = 'prompts/convo2.txt'
@@ -248,13 +250,14 @@ class ChatParser:
 
 		if (chosen_action_pred == 'noGoodAction' or chosen_action_pred not in [x.split('(')[0] for x in known_actions]):
 			# Case 1: no ID'd action
-			chosen_action_pred = self.confirm_no_good_action(known_actions, world_state, action)
+			if CONFIRM_GPT:
+				chosen_action_pred = self.confirm_no_good_action(known_actions, world_state, action)
 			if chosen_action_pred == 'noGoodAction':
 				# User confirms they want to teach this
 				return 'noGoodAction'
 			# The user either confirmed it or picked the right one,
 			# so we'll move on now
-		elif not self.confirm_guessed_action(action, chosen_action_pred):
+		elif CONFIRM_GPT and not self.confirm_guessed_action(action, chosen_action_pred):
 			# Case 2: we did ID an action, but the user didn't confirm it
 			chosen_action_pred = self.user_corrects_action(known_actions, world_state, action)
 			if chosen_action_pred == 'noGoodAction':
@@ -291,8 +294,10 @@ class ChatParser:
 
 		# If we were forced, by the user, to pick an action, don't bother
 		# using GPT to find out if it's a good paraphrase; they *told us* it was.
-		# if not self.is_paraphrase(action, chosen_action_args):
-			# return 'noGoodAction'
+
+		if not CONFIRM_GPT:
+			if not self.is_paraphrase(action, chosen_action_args):
+				return 'noGoodAction'
 
 		return chosen_action_args
 
@@ -415,7 +420,8 @@ class ChatParser:
 		user_oks_args = True
 
 		if parity_oks_args and len(canonical_action_args) > 0:
-			user_oks_args = self.confirm_guessed_args(grounded_action, grounded_args)
+			if CONFIRM_GPT:
+				user_oks_args = self.confirm_guessed_args(grounded_action, grounded_args)
 
 		obj_maybe_plur = 'objects' if len(canonical_action_args) != 1 else 'object'
 		err_msg = ''
