@@ -389,11 +389,15 @@ class OvercookedGame(Game):
         - _curr_game_over: Determines whether the game on the current mdp has ended
     """
 
-    def __init__(self, layouts=["cramped_room"], mdp_params={}, num_players=2, gameTime=30, playerZero='human', playerOne='human', showPotential=False, randomized=False, in_stream=sys.stdin, out_fn=print, **kwargs):
+    def __init__(self, layouts=["cramped_room"], mdp_params={}, num_players=2, gameTime=30, playerZero='human', playerOne='human', showPotential=False, randomized=False, in_stream=sys.stdin, socketio=None, premove_sender=None, app=None, out_fn=print, chatlog=[], **kwargs):
         playerOne = 'StayAI'
         gameTime = 9998
+        self.app = app
+        self.socketio = socketio
         layouts=["asymmetric_advantages_tomato"]
         super(OvercookedGame, self).__init__(**kwargs)
+        self.chatlog = chatlog
+        self.premove_sender = premove_sender
         self.show_potential = showPotential
         self.mdp_params = mdp_params
         self.in_stream = in_stream
@@ -610,7 +614,7 @@ class OvercookedGame(Game):
         # return ManualAI(self)
         try:
             print('making new valAI')
-            return ValAI(self, in_stream=self.in_stream, out_fn=self.out_fn)
+            return ValAI(self, app=self.app, socketio=self.socketio, in_stream=self.in_stream, out_fn=self.out_fn, chatlog=self.chatlog, gameid=self.id, premove_sender=self.premove_sender)
         except Exception as e:
             print(repr(e))
             traceback.print_exc()

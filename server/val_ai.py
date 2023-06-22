@@ -30,9 +30,16 @@ SESS_ID = 'demo_logs/' + str(random.randint(1,10000000))
 PRINT_STATE = False
 
 class ValAI():
-	def __init__(self, game, in_stream=sys.stdin, out_fn=print):
+	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None):
+		self.premove_sender = premove_sender
+		self.app = app
+		self.socketio = socketio
 		self.dirty_bit_ss = False
 		self.dirty_bit_ihtn = False
+
+		self.gameid = gameid
+
+		self.chatlog = chatlog
 
 		self.in_stream = in_stream
 		self.out_fn = out_fn
@@ -42,7 +49,7 @@ class ValAI():
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
 		# self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar, put(<arg1>,<arg2>) - a learned action", in_stream=self.in_stream, out_fn=self.out_fn)
-		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn)
+		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender)
 
 		self.inp_queue = []
 

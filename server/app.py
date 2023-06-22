@@ -120,24 +120,24 @@ game_id_to_webmux = dict()
 sid_to_webmux = dict()
 chat_buf_lock = Lock()
 def chat_out_fn(msg, game_id=None):
-	global chat_buf_lock
-	global game_id_to_webmux
-	chat_buf_lock.acquire()
+    global chat_buf_lock
+    global game_id_to_webmux
+    chat_buf_lock.acquire()
 
-	msg = msg.replace('\n', '<br />')
-	msg = msg.replace('\t', '&ensp;')
+    msg = msg.replace('\n', '<br />')
+    msg = msg.replace('\t', '&ensp;')
 
-	try:
-		with app.app_context():
-			socketio.emit('valmsg', {'msg': msg, 'id': game_id_to_webmux[game_id]})
-	finally:
-		chat_buf_lock.release()
+    try:
+        with app.app_context():
+            socketio.emit('valmsg', {'msg': msg, 'id': game_id_to_webmux[game_id]})
+    finally:
+        chat_buf_lock.release()
 
 #################################
 # Global Coordination Functions #
 #################################
 
-def try_create_game(game_name ,**kwargs):
+def try_create_game(game_name, chatlog=[], **kwargs):
     """
     Tries to create a brand new Game object based on parameters in `kwargs`
     
@@ -153,7 +153,7 @@ def try_create_game(game_name ,**kwargs):
         curr_id = FREE_IDS.get(block=False)
         assert FREE_MAP[curr_id], "Current id is already in use"
         game_cls = GAME_NAME_TO_CLS.get(game_name, OvercookedGame)
-        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_id), **kwargs)
+        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), socketio=socketio, app=app, premove_sender=send_premove_msg, out_fn=lambda msg: chat_out_fn(msg, game_id=curr_id), chatlog=chatlog, **kwargs)
     except queue.Empty:
         err = RuntimeError("Server at max capacity")
         return None, err
@@ -277,8 +277,8 @@ def  _leave_game(user_id):
 
     return was_active
 
-def _create_game(user_id, game_name, params={}):
-    game, err = try_create_game(game_name, **params)
+def _create_game(user_id, game_name, params={}, chatlog=[]):
+    game, err = try_create_game(game_name, chatlog=chatlog, **params)
     if not game:
         emit("creation_failed", { "error" : err.__repr__() })
         return
@@ -431,9 +431,9 @@ def debug():
 
 @socketio.on('setwebmuxid')
 def on_setwebmuxid(data):
-	global sid_to_webmux
+    global sid_to_webmux
 
-	sid_to_webmux[request.sid] = data['id']
+    sid_to_webmux[request.sid] = data['id']
 
 @socketio.on('create')
 def on_create(data):
@@ -448,8 +448,21 @@ def on_create(data):
         
         params = data.get('params', {})
         game_name = data.get('game_name', 'overcooked')
-        _create_game(user_id, game_name, params)
+        chatlog_filename = data.get('chatlog_filename', '')
+        chatlog = []
+        if chatlog_filename:
+            try:
+                with open(chatlog_filename, 'r') as f:
+                    chatlog = [x.strip() for x in f.read().strip().split('\n') if x.strip()]
+            except:
+                print('error opening file "%s"' % (chatlog_filename,))
+
+        _create_game(user_id, game_name, params, chatlog=chatlog)
     
+
+def send_premove_msg(gameid, msg):
+    webmuxid = game_id_to_webmux[gameid]
+    socketio.emit('premovemsg', {'msg': msg, 'id': webmuxid})
 
 @socketio.on('join')
 def on_join(data):
@@ -525,30 +538,30 @@ def on_action(data):
 
 @socketio.on('message')
 def on_message(msg):
-	print('got message:')
-	print(msg)
+    print('got message:')
+    print(msg)
 
-	val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
+    val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
 
-	# in_stream_w.write(msg['msg'].strip() + '\n')
-	if msg['msg'].strip() == '':
-		print('putting none')
-		val_ai.in_stream.put('#NONE#')
-	else:
-		print('putting %s' % (msg['msg'].strip(),))
-		val_ai.in_stream.put(msg['msg'].strip())
+    # in_stream_w.write(msg['msg'].strip() + '\n')
+    if msg['msg'].strip() == '':
+        print('putting none')
+        val_ai.in_stream.put('#NONE#')
+    else:
+        print('putting %s' % (msg['msg'].strip(),))
+        val_ai.in_stream.put(msg['msg'].strip())
 
 @socketio.on('yesno')
 def on_message(msg):
-	val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
+    val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
 
-	print('got y/n ans:')
-	print(msg)
-	# in_stream_w.write(msg['msg'].strip() + '\n')
-	if msg['msg'].strip() == '':
-		val_ai.in_stream.put('#NONE#')
-	else:
-		val_ai.in_stream.put(msg['msg'].strip())
+    print('got y/n ans:')
+    print(msg)
+    # in_stream_w.write(msg['msg'].strip() + '\n')
+    if msg['msg'].strip() == '':
+        val_ai.in_stream.put('#NONE#')
+    else:
+        val_ai.in_stream.put(msg['msg'].strip())
 
 @socketio.on('connect')
 def on_connect():

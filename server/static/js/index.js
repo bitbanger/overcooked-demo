@@ -12,7 +12,8 @@ $(function() {
         data = {
             "params" : params,
             "game_name" : "overcooked",
-            "create_if_not_found" : false
+            "create_if_not_found" : false,
+            "chatlog_filename" : $('#chatlogfnbox').val()
         };
         socket.emit("create", data);
         $('#waiting').show();
@@ -20,6 +21,8 @@ $(function() {
         $('#join').attr("disabled", true);
         $('#create').hide();
         $('#create').attr("disabled", true)
+        $('#chatlogfnbox').hide();
+        $('#chatlogfnbox').attr("disabled", true)
         $("#instructions").hide();
         $('#tutorial').hide();
     });

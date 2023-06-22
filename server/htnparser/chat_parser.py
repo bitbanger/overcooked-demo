@@ -35,7 +35,12 @@ def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
 
 class ChatParser:
-	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print):
+	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None):
+		self.premove_sender = premove_sender
+		self.app = app
+		self.socketio = socketio
+		self.gameid = gameid
+		self.chatlog = chatlog
 		self.act_prompt = self.load_prompt(act_prompt_fn)
 		self.segment_prompt = self.load_prompt(segment_prompt_fn)
 		self.name_prompt = self.load_prompt(name_prompt_fn)
@@ -54,6 +59,16 @@ class ChatParser:
 	def wait_input(self, prompt=''):
 		if prompt:
 			self.out_fn(prompt)
+
+		if self.chatlog:
+			# print(self.gameid)
+			resp = self.chatlog[0].strip()
+			# with self.app.app_context():
+				# self.socketio.emit('premovemsg_internal', {'msg': resp.strip(), 'gameid': self.gameid})
+			self.premove_sender(self.gameid, resp.strip())
+			self.chatlog = self.chatlog[1:]
+			return resp.strip()
+
 		inp = None
 		while not inp:
 			inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)

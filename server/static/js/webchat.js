@@ -157,6 +157,14 @@ msgerForm.addEventListener("submit", event => {
   msgerInput.value = "";
 });
 
+socket.on('premovemsg', function(data) {
+    console.log('got premove');
+	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	if (data['id'] == webmuxid) {
+		appendMessage(PERSON_NAME, PERSON_IMG, "right", data['msg']);
+	}
+});
+
 function appendMessage(name, img, side, text) {
   //   Simple solution for small apps
   const msgHTML = `
