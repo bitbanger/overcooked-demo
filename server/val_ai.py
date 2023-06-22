@@ -26,7 +26,6 @@ openai.util.logger.setLevel(logging.WARNING)
 import random
 
 PRINT_TERRAIN = False
-SESS_ID = 'demo_logs/' + str(random.randint(1,10000000))
 PRINT_STATE = False
 
 class ValAI():
@@ -633,11 +632,6 @@ class ValAI():
 			else:
 				# print('staying')
 				return Action.STAY, None
-			with open(SESS_ID, 'a+') as f:
-				# f.write('Enter action: ')
-				f.write('VAL: What should I do?\n')
-			with open(SESS_ID, 'a+') as f:
-				f.write('User: ' + inp + '\n')
 
 			def clarify_hook2(ua):
 				# inp = input('What do you mean by "%s"?: ' % (ua,))
@@ -651,11 +645,6 @@ class ValAI():
 						inp = self.wait_input()
 					else:
 						break
-				with open(SESS_ID, 'a+') as f:
-					f.write('VAL: What do you mean by "%s"?\n' % (ua,))
-					f.write('User: ' + inp + '\n')
-				with open('speech_outf', 'a+') as f:
-					f.write('What do you mean by "%s"?\n' % (ua,))
 
 				return inp
 

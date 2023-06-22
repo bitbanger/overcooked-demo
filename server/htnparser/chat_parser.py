@@ -1,4 +1,5 @@
 import html
+import os
 import os.path
 import select
 import sys
@@ -60,6 +61,7 @@ class ChatParser:
 		if prompt:
 			self.out_fn(prompt)
 
+		ret = None
 		if self.chatlog:
 			# print(self.gameid)
 			resp = self.chatlog[0].strip()
@@ -67,18 +69,28 @@ class ChatParser:
 				# self.socketio.emit('premovemsg_internal', {'msg': resp.strip(), 'gameid': self.gameid})
 			self.premove_sender(self.gameid, resp.strip())
 			self.chatlog = self.chatlog[1:]
-			return resp.strip()
+			ret = resp.strip()
+		else:
+			inp = None
+			while not inp:
+				inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
+				if inp:
+					inp = self.in_stream.get().strip()
 
-		inp = None
-		while not inp:
-			inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
-			if inp:
-				inp = self.in_stream.get().strip()
+			if inp == '#NONE#':
+				inp = ''
 
-		if inp == '#NONE#':
-			inp = ''
+			ret = inp
 
-		return inp
+		# Select the most recent log folder
+		log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
+
+		log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
+
+		with open(log_fn, 'a+') as f:
+			f.write('User: %s\n' % (ret.strip(),))
+
+		return ret
 
 	@staticmethod
 	def load_prompt(prompt_fn):

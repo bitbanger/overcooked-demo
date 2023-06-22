@@ -3,6 +3,17 @@ import os
 import pipes
 import io
 import sys
+import time
+
+SESS_ID = 'demo_logs/' + str(int(time.time()*1000000))
+try:
+    os.mkdir('demo_logs')
+except:
+    pass
+try:
+    os.mkdir(SESS_ID)
+except:
+    pass
 
 # Import and patch the production eventlet server if necessary
 if os.getenv('FLASK_ENV', 'production') == 'production':
@@ -130,6 +141,8 @@ def chat_out_fn(msg, game_id=None):
     try:
         with app.app_context():
             socketio.emit('valmsg', {'msg': msg, 'id': game_id_to_webmux[game_id]})
+            with open('%s/%s.txt' % (SESS_ID, game_id), 'a+') as f:
+                f.write('VAL: %s\n' % (msg.strip(),))
     finally:
         chat_buf_lock.release()
 
