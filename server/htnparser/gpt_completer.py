@@ -78,6 +78,7 @@ class GPTCompleter:
 
 	def get_chat_gpt_completion(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, retries=5):
 		res = None
+		# print(prompt)
 		for i in range(retries):
 			if i == 0:
 				print('*', end='')
@@ -95,6 +96,7 @@ class GPTCompleter:
 	def get_chat_gpt_completion_helper(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None):
 		# prompt_msgs = [x.strip() for x in prompt.split('***') if len(x.strip()) > 0]
 		prompt_msgs = [x.strip() for x in prompt.split('***')]
+		print(prompt_msgs)
 		annotated_msgs = []
 		role = 'user'
 		other_role = 'assistant'
@@ -103,8 +105,8 @@ class GPTCompleter:
 				annotated_msgs = [{'role': role, 'content': msg.strip()}] + annotated_msgs
 			(role, other_role) = (other_role, role)
 
-		# print('RAW MSGS:')
-		# print(annotated_msgs)
+		print('RAW MSGS:')
+		print(annotated_msgs)
 
 		if temp == 0:
 			key = hash(('chat', prompt, rep_pen, max_length, stop))
@@ -135,3 +137,12 @@ class GPTCompleter:
 			# print('RESP:')
 			# print(res)
 			return res
+
+if __name__ == '__main__':
+	prompt = None
+	with open(sys.argv[1].strip(), 'r') as f:
+		prompt = f.read().strip() % (sys.stdin.read().strip(),)
+
+	resp = GPTCompleter().get_chat_gpt_completion(prompt).strip()
+
+	print(resp)

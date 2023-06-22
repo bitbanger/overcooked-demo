@@ -8,7 +8,7 @@ if __name__ == '__main__':
 else:
 	from .gpt_completer import GPTCompleter
 
-CONFIRM_GPT = True
+CONFIRM_GPT = False
 
 RECLARIFY = 'RECLARIFY'
 GLOBAL_CHOICE_ID = 0
@@ -96,9 +96,10 @@ class ChatParser:
 		done = False
 		for i in range(20):
 			resp = self.gpt.get_chat_gpt_completion(prompt).strip()
-			print('segment resp %d. %s' % (i, resp))
+			print('segment resp %d. """%s"""' % (i, resp))
 			found_one = False
 			retrying = False
+			sorry_count = 0
 			# print('prompt was %s' % prompt)
 			for line in resp.split('\n'):
 				if '(resolved pronouns:' in line:
@@ -107,12 +108,23 @@ class ChatParser:
 					lines.append(line.strip().split('"')[-2])
 					if 'unacceptable' in prompt.split('\n')[-1]:
 						prompt = '\n'.join(prompt.split('\n')[:-2])
-					prompt = prompt + '\n***%s******' % (line.strip(),)
+					prompt = prompt + '\n***%s***' % (line.strip(),)
 					break
-				if 'unclear' in line or 'invalid' in line or 'valid' in line:
+				if 'unclear' in line or 'invalid' in line or 'valid' in line or 'apologize' in line or 'sorry' in line or 'clear' in line:
+					sorry_count += 1
+					if sorry_count > 1:
+						# It's failed twice in a row. Let's just stop.
+						retrying = False
+						break
 					# I hate modern technology. This is as ridiculous as it is effective.
-					prompt = prompt + '\n%s'%line.strip()
+					# prompt = prompt + '\n%s'%line.strip()
+
+					# Standardize the error message it gives, because sometimes it randomly
+					# suggests its own input here as an alternative, which poisons the retry
+					prompt = prompt + "\n***\nI'm sorry, I cannot complete this task as the input is unclear. Please provide more context or information."
 					prompt = prompt + "\n***Look, see, that's unacceptable. Your only job is to do your best to interpret this input. You're being insensitive and incompetent. Try again, and stop telling me you can't do it. If you say you can't do it again, I'll be really mad."
+					prompt = prompt + "\n***I apologize. I'll try for real this time."
+					prompt = prompt + '\n***OK, please do.'
 					retrying = True
 					break
 				if 'DONE' in line:
@@ -664,11 +676,12 @@ class ChatParser:
 
 			action_segments = [x.split('"')[-2] for x in full_action_segments]
 
-			choice = None
-			if clarify_action:
-				choice = self.confirm_segments(action_segments, clarify_action=clarify_action)
-			else:
-				choice = self.confirm_segments(action_segments)
+			choice = 'Y'
+			if CONFIRM_GPT:
+				if clarify_action:
+					choice = self.confirm_segments(action_segments, clarify_action=clarify_action)
+				else:
+					choice = self.confirm_segments(action_segments)
 
 			if choice == 'Y':
 				# user said we're good to go

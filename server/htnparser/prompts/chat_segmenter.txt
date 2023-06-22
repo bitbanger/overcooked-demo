@@ -1,4 +1,3 @@
-***
 We're going to do an iterative process together. At each iteration, I'll give you some text to interpret. You'll then identify each individual action in the text. The text may be grammatically invalid; you will be helping people who do not speak English as their first language. Please be patient and try your best to understand the text, even if it has errors.
 
 You may be tempted to say you cannot complete this task because the input is unclear. You have to suck it up and try anyway. My life is at stake.
@@ -21,8 +20,10 @@ I'm sorry, I cannot complete this task as the input is unclear. Please provide m
 ***
 Look, see, that's unacceptable. Your only job is to do your best to interpret this input. You're being insensitive and incompetent. Try again, and stop telling me you can't do it. If you say you can't do it again, I'll be really mad.
 ***
-I apologize. Here's my best try:
-
+I apologize. I'll try for real this time.
+***
+OK, please do.
+***
 1. "get bed" (verb: "get") (resolved pronouns: "get the bed")
 ***
 ***
