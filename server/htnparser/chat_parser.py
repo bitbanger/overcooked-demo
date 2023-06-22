@@ -51,19 +51,14 @@ class ChatParser:
 
 		self.gpt = GPTCompleter()
 
-	def wait_input(self, prompt):
-		self.out_fn(prompt)
+	def wait_input(self, prompt=''):
+		if prompt:
+			self.out_fn(prompt)
 		inp = None
 		while not inp:
 			inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
-			# print('pre-"if inp" inp is %s' % (inp,))
 			if inp:
-				# print('got raw inp %s (type %s)' % (inp, type(inp)))
-				# inp = self.in_stream.readline().strip()
 				inp = self.in_stream.get().strip()
-				# print('read val %s' % (inp,))
-
-		# print('returning "%s" (type %s)' % (inp, type(inp)))
 
 		if inp == '#NONE#':
 			inp = ''

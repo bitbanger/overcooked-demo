@@ -90,16 +90,20 @@ class ValAI():
 
 		# self.env.state_queue_w.send({})
 
+	'''
 	def wait_input(self):
 		inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
 		if inp:
-			# inp = self.in_stream.readline().strip()
 			inp = self.in_stream.get().strip()
 			if inp == '#NONE#':
 				inp = ''
 			return inp
 		else:
 			return None
+	'''
+
+	def wait_input(self, prompt=''):
+		return self.itl.wait_input(prompt)
 
 	def ai_player_pos(self):
 		return self.state.players[1].position

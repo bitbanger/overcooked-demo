@@ -34,6 +34,9 @@ class InteractiveTaskLearner:
 
 		self.primitive_actions = [x.strip() for x in primitive_actions.split(', ')]
 
+	def wait_input(self, prompt=''):
+		return self.parser.wait_input(prompt)
+
 	def known_actions(self):
 		learned_actions = []
 		for learned_action in self.gen_task_knowledge.keys():
