@@ -121,7 +121,7 @@ class ValAI():
 			t = self.active_terrain_helper()
 			if t is None:
 				nones += 1
-				sleep(0.5)
+				sleep(0.1)
 				continue
 			else:
 				break
@@ -161,7 +161,7 @@ class ValAI():
 			t = self.ground_object_helper(obj_name)
 			if t is None:
 				nones += 1
-				sleep(0.5)
+				sleep(0.1)
 				continue
 			else:
 				break
@@ -574,7 +574,7 @@ class ValAI():
 		(s, a, i) = sig[0][0].recv()
 		'''
 
-		sleep(1)
+		sleep(0.1)
 		if self.collect_state_after_action:
 			# print('adding state %s' % (self.build_state_dict(),))
 			# print('diff: ', end='')
@@ -626,7 +626,7 @@ class ValAI():
 			# else:
 				# return Action.STAY, None
 			inp = self.wait_input()
-			sleep(0.5)
+			sleep(0.1)
 			if inp:
 				self.need_inp = True
 			else:
@@ -654,7 +654,7 @@ class ValAI():
 			# self.last_inp_queue_size = len(self.inp_queue)-1
 			self.state_snapshots.append(self.build_state_dict())
 
-		sleep(1.5)
+		sleep(0.1)
 		# inp = self.inp_queue[0]
 		# self.inp_queue = self.inp_queue[1:]
 		inp = next(self.inp_queue)
