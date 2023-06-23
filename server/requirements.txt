@@ -16,3 +16,9 @@ Werkzeug==2.0.3
 tensorflow==2.0.3
 requests==2.23.0
 protobuf==3.19
+eventlet==0.30.2
+-e git+https://github.com/HumanCompatibleAI/overcooked_ai.git@0571eb0172ac983428faedfcb6a2b5206074db0d#egg=overcooked_ai
+ray==2.0.0
+more-itertools==9.1.0
+openai==0.27.7
+nltk==3.8.1
