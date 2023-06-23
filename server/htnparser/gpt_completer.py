@@ -8,6 +8,10 @@ import xmlrpc.client
 
 class GPTCompleter:
 	def __init__(self, local_model=None):
+		try:
+			os.mkdir('api_cache')
+		except:
+			pass
 		if local_model is not None:
 			try:
 				self.server = xmlrpc.client.ServerProxy('http://localhost:8000')
