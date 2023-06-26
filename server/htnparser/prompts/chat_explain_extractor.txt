@@ -1,0 +1,3 @@
+A user has requested that I explain an action. Here's what they said: "%s"
+
+Please reformulate their request as if it were a command to do action X, instead of a request to explain action X. Be as brief as possible, don't use extra words like "please", and remember to put the command in quotation marks. Make sure your response starts with "explain how to".

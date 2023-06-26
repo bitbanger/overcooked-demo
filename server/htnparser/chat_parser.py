@@ -264,6 +264,9 @@ class ChatParser:
 		if len(resp) >= 2 and resp[0] == '"' and resp[-1] == '"':
 			resp = resp[1:-1]
 
+		# print(prompt)
+		# print(resp)
+
 		if resp.lower()[:len(chosen_action)] != chosen_action.lower() or resp[len(chosen_action)] != '(' or resp[-1] != ')':
 			print('resp was %s, sadly; c.f. %s' % (resp.lower(), chosen_action.lower()))
 			return None
@@ -305,6 +308,7 @@ class ChatParser:
 
 		# Now that we have an action, let's pick some args
 		chosen_action_args = self.choose_action_args(chosen_action_pred, world_state, action, len(canonical_action_args))
+		print('chose action args: %s' % (chosen_action_args,))
 
 		err_msg = ''
 		if chosen_action_args is None:
@@ -331,6 +335,7 @@ class ChatParser:
 
 		if not CONFIRM_GPT:
 			if not self.is_paraphrase(action, chosen_action_args):
+				print("%s wasn't a paraphrase of %s" % (action, chosen_action_args))
 				return 'noGoodAction'
 
 		return chosen_action_args
@@ -664,7 +669,7 @@ class ChatParser:
 	# a recursive call to itself on new input. When the process concludes,
 	# all new actions will be groundable in terms of actions known prior
 	# to the call.
-	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0):
+	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0, clarify_unknowns=True):
 		global GLOBAL_CHOICE_ID
 
 		if clarify_hook is None:
@@ -728,8 +733,16 @@ class ChatParser:
 			maybe_known_action = self.handle_known_action(new_known_actions, known_actions, [], action)
 			if maybe_known_action != 'noGoodAction': # Known action; add it!
 				print('level %d yielding known %s' % (level, maybe_known_action))
+				print("IF THERE IS A BUG WITH ACTION SEQUENCES, IT'S PROBABLY CAUSED HERE. DO NOT REMOVE THIS DEBUG MESSAGE.")
+				if not clarify_action or maybe_known_action[1] not in [x.split('(')[0] for x in known_actions]:
+					print('yielding got inp here %s' % (maybe_known_action,))
+					yield ['action_stream', maybe_known_action]
 				yield maybe_known_action
 			else: # New, unknown action
+				if not clarify_unknowns:
+					yield 'noGoodAction'
+					continue
+
 				# Get a name for it.
 				new_name = self.name_action(action)
 
@@ -739,7 +752,9 @@ class ChatParser:
 					# Get a full task definition for it.
 					# new_explanation = self.get_steps_for_clarify(action, clarify_hook)
 					new_explanation = clarify_hook(action)
-					res = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, clarify_action=action, level=level+1)
+					res = self.get_actions(new_known_actions, world_state, new_explanation, clarify_hook=clarify_hook, clarify_action=action, level=level+1, clarify_unknowns=clarify_unknowns)
+					# res = [x for x in res if x[0] != 'action_stream']
+					# print('actions from explanation "%s" are %s' % (new_explanation, res))
 
 					if res == RECLARIFY:
 						# Some substep of get_actions failed, so we're taking a step all the way back here.
@@ -751,10 +766,17 @@ class ChatParser:
 						for elem in res:
 							if type(elem) == dict:
 								rec_new_action_defs = elem
-							else:
+							elif elem[0] != 'action_stream' and elem[1] in [x.split('(')[0] for x in known_actions]:
+								print('level %d elem-yielding %s' % (level, elem))
+								yield ['action_stream', elem]
+								rec_action_seq.append(elem)
+							elif elem[0] != 'action_stream':
 								print('level %d elem-yielding %s' % (level, elem))
 								yield elem
 								rec_action_seq.append(elem)
+							elif elem[0] == 'action_stream':
+								yield elem
+								# rec_action_seq.append(elem[1])
 
 				# Extract the set of all argument objects in the subtree for
 				# the next step, described immediately below.
@@ -800,8 +822,12 @@ class ChatParser:
 				new_known_actions.append(new_pred_and_args_gen + ' - a learned action')
 				# action_seq.append(['learned', new_pred, new_args])
 				print('level %d yielding %s' % (level, ['learned', new_pred, new_args],))
-				yield ['learned', new_pred, new_args]
+				print('defined it as %s' % (rec_action_seq,))
 				new_action_defs[new_pred.lower()] = (rec_action_seq, new_args)
+				yield ['learned', new_pred, new_args]
+
+		if not clarify_unknowns:
+			return
 
 		# Since child calls in the recursion will see the "new known actions"
 		# simply as "known actions", they may improperly label actions in
@@ -817,6 +843,7 @@ class ChatParser:
 					new_seq.append(nest)
 			new_action_defs[new_pred] = (new_seq, new_action_defs[new_pred][1])
 
+		print('yielding new action defs %s' % (new_action_defs,))
 		yield new_action_defs
 		# return (None, action_seq, new_action_defs)
 

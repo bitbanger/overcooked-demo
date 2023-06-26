@@ -1,0 +1,3 @@
+A user is trying to teach me an action. Here's what they said: "%s"
+
+What action are they trying to teach? Please put it in quotes.

@@ -12,7 +12,7 @@ from overcooked_ai_py.mdp.actions import Action, Direction
 # from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
 # from HTNAgent.tact_agent import TACTAgent
 
-from htnparser.itl import InteractiveTaskLearner
+from htnparser.itl import InteractiveTaskLearner, REQUEST, EXPLANATION, INSTRUCTION
 
 import html
 import sys
@@ -593,20 +593,21 @@ class ValAI():
 			# self.old_inp_queue = []
 			# self.state_snapshots = []
 		# if len(self.inp_queue) == 0:
+		def clarify_hook2(ua):
+			self.out_fn('What are the steps of "<i>%s</i>"?' % (ua,))
+			inp = self.wait_input()
+			while True:
+				if inp is None:
+					inp = self.wait_input()
+				else:
+					break
+
+			return inp
+
 		if not self.inp_queue:
 			# inp = input('Enter action: ').strip()
 			if self.need_inp:
 				# self.itl.save('val_model.pkl')
-				'''
-				msg = ''
-				msg = msg + '\t<b>Currently known actions:</b>'
-				for ka in self.itl.known_actions():
-					msg = msg + '\n\t\t<span style="font-family: monospace;">%s</span>' % (html.escape(ka.split(' - ')[0]),)
-				msg = msg + '\n'
-				msg = msg + "\t<i><small>(to teach new actions, just use them in a sentence, and I'll ask for clarification!)</small></i>"
-				msg = msg + '\n\nWhat should I do?'
-				'''
-
 				msg = '<b>Currently known actions:</b>'
 				kas = self.itl.known_actions()
 				for i in range(len(kas)):
@@ -615,8 +616,8 @@ class ValAI():
 				msg = msg + "\n\t<i><small>(to teach new actions, just use them in a sentence, and I'll ask for clarification!)</small></i>"
 				# msg = msg + "\n\nWhat should I do?"
 
-				self.out_fn(msg)
-				self.out_fn('What should I do?')
+				# self.out_fn(msg)
+				# self.out_fn('What should I do?')
 				# self.out_fn('User: ', end='')
 				self.need_inp = False
 			# inp, onp, enp = select.select([sys.stdin], [], [], 5)
@@ -633,20 +634,34 @@ class ValAI():
 				# print('staying')
 				return Action.STAY, None
 
-			def clarify_hook2(ua):
-				# inp = input('What do you mean by "%s"?: ' % (ua,))
-				self.out_fn('What are the steps of "<i>%s</i>"?' % (ua,))
-				# self.out_fn('\t(please give every step of the procedure as _one_ message)')
-				# self.out_fn('\t\t(e.g., "do X, then do Y, then do Z")')
-				# self.out_fn('User: ', end='')
-				inp = self.wait_input()
-				while True:
-					if inp is None:
-						inp = self.wait_input()
+			# Intent classification
+			intent_tup = self.itl.classify_intent(inp)
+			intent = intent_tup[0]
+			if intent == REQUEST:
+				print('request')
+			elif intent == INSTRUCTION:
+				print('instructing VAL to perform action %s' % (intent_tup[1],))
+			elif intent == EXPLANATION:
+				print('requesting that VAL explain action %s' % (intent_tup[1],))
+				if 'explain how to' in intent_tup[1].lower():
+					expl_req = intent_tup[1].strip()[len('explain how to'):].strip()
+				expl_actions = self.itl.process_instruction(expl_req, clarify_unknowns=False, only_depth=1)
+				expl_actions_fmt = ''
+				for ea in expl_actions:
+					if ea[0] == 'action_stream':
+						continue
+					spl = ea.strip().split(' ')
+					if len(spl) > 1:
+						expl_actions_fmt = expl_actions_fmt + '\n- %s(%s)' % (spl[0], spl[1])
 					else:
-						break
-
-				return inp
+						expl_actions_fmt = expl_actions_fmt + '\n- %s()' % (spl[0],)
+				expl_prompt = self.itl.parser.load_prompt('prompts/chat_explainer.txt')
+				expl = self.itl.parser.gpt.get_chat_gpt_completion(expl_prompt%(expl_actions_fmt.strip(),)).strip()
+				print(expl)
+				print('done explaining')
+				self.out_fn(expl)
+				self.need_inp = True
+				return Action.STAY, None
 
 			# self.inp_queue = self.itl.process_instruction(inp, clarify_hook=clarify_hook2) + ['SENTINEL']
 			self.inp_queue = peekable(self.itl.process_instruction(inp, clarify_hook=clarify_hook2))
@@ -657,8 +672,18 @@ class ValAI():
 		sleep(0.1)
 		# inp = self.inp_queue[0]
 		# self.inp_queue = self.inp_queue[1:]
-		inp = next(self.inp_queue)
-		# print('PULLING %s from inp_queue' % (inp,))
+
+		try:
+			inp = next(self.inp_queue)
+			print('got inp %s' % (inp,))
+			while inp[0] != 'action_stream':
+				print('&got inp %s' % (inp,))
+				inp = next(self.inp_queue)
+		except StopIteration:
+			return Action.STAY, None
+
+		inp = inp[1]
+		print('PULLING %s from inp_queue' % (inp,))
 
 
 		s = None

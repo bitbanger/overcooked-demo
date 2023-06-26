@@ -1,0 +1,7 @@
+The possible intents of a user message are:
+
+1. The user wants you to do something other than explaining
+2. The user wants to teach you something
+3. The user wants you to explain something
+
+Which intent do you think the user had with the message "%s"? Please respond with either 1, 2, or 3.

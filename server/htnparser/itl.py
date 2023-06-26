@@ -5,6 +5,10 @@ from copy import deepcopy
 # from .modular_parser import ModularHTNParser
 from .chat_parser import ChatParser
 
+REQUEST = '#REQUEST#'
+INSTRUCTION = '#INSTRUCTION#'
+EXPLANATION = '#EXPLANATION#'
+
 # InteractiveTaskLearner (ITL) is a stateful class meant to
 # contain and manage the lifetime knowledge of an interactive
 # agent whose task knowledge is acquired by the clarification
@@ -35,6 +39,7 @@ class InteractiveTaskLearner:
 		self.arg_num = 0
 
 		self.chatlog = chatlog
+		self.out_fn = out_fn
 
 		# self.parser = ModularHTNParser()
 		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn, chatlog=chatlog, gameid=gameid, socketio=socketio, app=app, premove_sender=premove_sender)
@@ -63,18 +68,23 @@ class InteractiveTaskLearner:
 	# Because of the way clarify_hook handles a None value in
 	# the parser, and just for terseness, we're abstracting the
 	# parser call into this member method.
-	def parse(self, instruction, clarify_hook=None):
+	def parse(self, instruction, clarify_hook=None, clarify_unknowns=True):
 		if clarify_hook:
-			for elem in self.parser.get_actions(self.known_actions(), None, instruction, clarify_hook=clarify_hook):
+			for elem in self.parser.get_actions(self.known_actions(), None, instruction, clarify_hook=clarify_hook, clarify_unknowns=clarify_unknowns):
 				yield elem
 		else:
-			for elem in self.parser.get_actions(self.known_actions(), None, instruction):
+			for elem in self.parser.get_actions(self.known_actions(), None, instruction, clarify_unknowns=clarify_unknowns):
 				yield elem
 
-	def linearize_plan(self, plan, in_bindings=dict()):
+	def linearize_plan(self, plan, in_bindings=dict(), only_depth=None, depth=0):
 		leaves = []
+		print('plan steps are %s' % (plan,))
 		for step in plan:
 			bindings = deepcopy(in_bindings)
+			try:
+				(status, name, args) = step
+			except:
+				print('step was %s' % (step,))
 			(status, name, args) = step
 
 			# If any of our args have been bound, use the values instead
@@ -82,23 +92,30 @@ class InteractiveTaskLearner:
 			args = [arg for arg in args if len(arg) > 0]
 
 			# Add leaf actions to the linearization
-			if name.lower() not in self.gen_task_knowledge:
-				leaves.append('%s %s' % (name, ','.join(args)))
+			if only_depth is not None:
+				if depth == only_depth:
+					leaves.append('%s %s' % (name, ','.join(args)))
+			else:
+				if name.lower() not in self.gen_task_knowledge:
+					leaves.append('%s %s' % (name, ','.join(args)))
 
-			# Recurse for composite/learned actions
-			if name.lower() in self.gen_task_knowledge:
-				# Get the generalized arg names for this action
-				gen_args = self.gen_task_knowledge[name.lower()][1]
+			if only_depth is None or depth < only_depth:
+				# Recurse for composite/learned actions
+				if name.lower() in self.gen_task_knowledge:
+					# Get the generalized arg names for this action
+					gen_args = self.gen_task_knowledge[name.lower()][1]
 
-				# Make the binding dict
-				for i in range(len(args)):
-					if gen_args[i] in bindings and bindings[gen_args[i]] != args[i]:
-						# print("BINDING CONFLICT: %s in method %s can't bind to both %s and %s" % (gen_args[i], name, bindings[gen_args[i]], args[i]))
-						quit()
-					bindings[gen_args[i]] = args[i]
+					print('definition for %s is %s' % (name.lower(), self.gen_task_knowledge[name.lower()][0]))
 
-				# Recurse
-				leaves += self.linearize_plan(self.gen_task_knowledge[name.lower()][0], in_bindings=deepcopy(bindings))
+					# Make the binding dict
+					for i in range(len(args)):
+						if gen_args[i] in bindings and bindings[gen_args[i]] != args[i]:
+							# print("BINDING CONFLICT: %s in method %s can't bind to both %s and %s" % (gen_args[i], name, bindings[gen_args[i]], args[i]))
+							quit()
+						bindings[gen_args[i]] = args[i]
+
+					# Recurse
+					leaves += self.linearize_plan(self.gen_task_knowledge[name.lower()][0], in_bindings=deepcopy(bindings), only_depth=only_depth, depth=depth+1)
 
 		return leaves
 
@@ -136,7 +153,51 @@ class InteractiveTaskLearner:
 		# in the internal knowledge base
 		self.gen_task_knowledge[learned_name] = (new_substeps, gen_arg_names)
 
-	def process_instruction(self, instruction, clarify_hook=None):
+	def extract_instruct_action(self, utterance):
+		prompt1 = self.parser.load_prompt('prompts/chat_instruct_extractor_pt1.txt')
+		prompt2 = self.parser.load_prompt('prompts/chat_instruct_extractor_pt2.txt')
+
+		r1 = self.parser.gpt.get_chat_gpt_completion(prompt1%utterance.strip())
+		r2 = self.parser.gpt.get_chat_gpt_completion(prompt2%(utterance.strip(), r1.strip()))
+
+		return r2.split('"')[1].strip()
+
+	def extract_explain_action(self, utterance):
+		prompt = self.parser.load_prompt('prompts/chat_explain_extractor.txt')
+
+		r1 = self.parser.gpt.get_chat_gpt_completion(prompt%utterance.strip())
+
+		return r1.split('"')[1].strip()
+
+	def classify_intent(self, utterance):
+		prompt = self.parser.load_prompt('prompts/chat_intent.txt')
+
+		cls = self.parser.gpt.get_chat_gpt_completion(prompt%utterance.strip())
+
+		intent = REQUEST
+		if "1" in cls:
+			intent = REQUEST
+		elif "2" in cls:
+			intent = INSTRUCTION
+		elif "3" in cls:
+			intent = EXPLANATION
+
+		if intent == REQUEST:
+			return (intent,)
+		elif intent == INSTRUCTION:
+			# get the name of the task they're teaching
+			try:
+				return (intent, self.extract_instruct_action(utterance))
+			except:
+				return (REQUEST,)
+		elif intent == EXPLANATION:
+			# get the name of the task they want explained
+			try:
+				return (intent, self.extract_explain_action(utterance))
+			except:
+				return (REQUEST,)
+
+	def process_instruction(self, instruction, clarify_hook=None, clarify_unknowns=True, only_depth=None):
 		# Call the parser with the instruction.
 		# This will convert it into a full task
 		# tree, represented as a list of possibly
@@ -144,23 +205,50 @@ class InteractiveTaskLearner:
 		# dictionary mapping all non-terminal actions
 		# to their definitions (new_actions), grounding
 		# out with entirely terminal (primitive) actions.
-		for elem in self.parse(instruction, clarify_hook=clarify_hook):
-			if type(elem) == dict:
+		for elem in self.parse(instruction, clarify_hook=clarify_hook, clarify_unknowns=clarify_unknowns):
+			if type(elem) == dict and clarify_unknowns:
+				print('got dict %s' % elem)
 				new_actions = elem
 				# Generalize the learned actions, abstracting
 				# out specific arguments.
 				for learned_name in new_actions:
-					print("\nOK, I've learned how to '%s'!" % (learned_name))
+					# print("\nOK, I've learned how to '%s'!" % (learned_name))
 					(substeps, arg_names) = new_actions[learned_name]
 					self.generalize_learned_action((learned_name, substeps, arg_names))
+				learned_fmt = ''
+				learned_names = sorted([x for x in new_actions])
+				if len(learned_names) > 0:
+					for i in range(len(learned_names)):
+						if i == len(learned_names)-1:
+							learned_fmt = learned_fmt + ', and '
+						elif i != 0:
+							learned_fmt = learned_fmt + ', '
+						learned_fmt = learned_fmt + '<code>%s</code>'%(learned_names[i],)
+					self.out_fn("OK, from your explanation of how to \"<i>%s</i>\", I've learned how to %s!" % (instruction, learned_fmt))
+					
 			else:
 				# Linearize the plan by applying the argument-binding
 				# action sequence from the parser to the generalized
 				# task knowledge and extracting the sequence of all
 				# primitive actions.
 				# return self.linearize_plan(action_seq)
-				for step in self.linearize_plan([elem]):
-					yield step
+				# for step in self.linearize_plan([elem]):
+					# yield step
+
+				if only_depth is not None:
+					if elem[0] == 'action_stream':
+						continue
+					for step in self.linearize_plan([elem], only_depth=only_depth):
+						yield step
+				else:
+					if elem[0] == 'action_stream':
+						print('got action stream %s' % (elem[1],))
+						for step in self.linearize_plan([elem[1]]):
+							print('as step is %s' % (step,))
+							yield ['action_stream', step]
+					else:
+						for step in self.linearize_plan([elem]):
+							yield step
 
 	def save(self, filename):
 		with open(filename, 'wb+') as f:
