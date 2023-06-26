@@ -780,7 +780,8 @@ class ChatParser:
 				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',') if len(x.strip()) > 0]
 
 
-				new_args = self.user_corrects_new_args(action, new_pred, new_args)
+				if CONFIRM_GPT:
+					new_args = self.user_corrects_new_args(action, new_pred, new_args)
 
 				new_pred_and_args_gen = '%s(%s)' % (new_pred, ', '.join([('<arg%d>' % (i+1)) for i in range(len(new_args))]))
 
