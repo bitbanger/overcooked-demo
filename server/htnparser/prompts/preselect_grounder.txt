@@ -5,3 +5,5 @@ And this command: "%s"
 And these environmental objects to choose from: %s
 
 Please select objects that correspond to those provided in the command. Remember that, since %s only has %s, you may only select %s. Respond only with the predicate name and arguments you choose, like this: "%s(%s)"
+
+If the argument in the command has a different meaning than the object in the list, don't choose it. If you need to use arguments that do not exist in the list above, you may do so. For example, if the list of objects was "ball, bat, pool", and the command was "find a flashlight", you could respond with find(flashlight).

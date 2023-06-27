@@ -215,7 +215,12 @@ However, for now, please keep your repsonses short and general. Do not include l
 
 	def is_paraphrase(self, action, pred):
 		# return self.gpt.get_chat_gpt_completion(self.para_prompt%('"%s" and %s' % (action, pred)))[0] == 'Y'
-		return 'yes' in self.gpt.get_chat_gpt_completion('Do "%s" and "%s" mean the same thing? Please answer either "yes" or "no".' % (action, self.verbalize_pred(pred))).lower()
+		vp = self.verbalize_pred(pred)
+		print('do %s and %s mean the same thing?' % (action, vp))
+		# ans = self.gpt.get_chat_gpt_completion('Could "%s" and "%s" mean the same thing? Please answer either "yes" or "no".' % (action, vp)).lower()
+		ans = self.gpt.get_chat_gpt_completion('I know an action called "%s", but a non-native English speaker told me to "%s". I know they might not have exactly the same meaning, but could they have meant "%s"? Please respond either "yes" or "no".' % (action, vp, action)).lower()
+		print('ans: %s' % (ans.strip(),))
+		return 'yes' in ans
 
 	def ground_new_args(self, action, objects):
 		name = self.name_action(action)
@@ -236,16 +241,22 @@ However, for now, please keep your repsonses short and general. Do not include l
 
 	def choose_action_pred(self, known_actions, world_state, action):
 		# Encode all inputs into the prompt
-		new_ka_lst = [('[%s] %s' % (chr(ord('a')+i), known_actions[i].split('-')[0].strip())) for i in range(len(known_actions))]
+		# new_ka_lst = [('[%s] %s' % (chr(ord('a')+i), known_actions[i].split('-')[0].strip())) for i in range(len(known_actions))]
+		new_ka_lst = [('[%s] %s' % (chr(ord('a')+i), known_actions[i].split('(')[0].strip())) for i in range(len(known_actions))]
 		obj_str = '[pot, onion, tomato, dropoff, plate]'
 		first_ka_str = ', '.join(new_ka_lst)
 
 		second_ka_lst = [x.split('(')[0] for x in new_ka_lst]
-		second_ka_lst.append('[%s] None of the above; "%s" would require a combination of actions.' % (chr(ord('a')+len(known_actions)), action))
+		# second_ka_lst.append('[%s] None of the above; "%s" would require a combination of actions.' % (chr(ord('a')+len(known_actions)), action))
+		second_ka_lst.append('[%s] None of the above; I want to create a new action for this' % (chr(ord('a')+len(known_actions)),))
 		second_ka_str = '\n'.join(second_ka_lst)
 
-		prompt = self.life_depends_prompt % (first_ka_str, obj_str, action, second_ka_str)
+		# prompt = self.life_depends_prompt % (first_ka_str, obj_str, action, second_ka_str)
+
+		prompt = self.life_depends_prompt % (first_ka_str, action, second_ka_str)
+		print(prompt)
 		resp = self.gpt.get_chat_gpt_completion(prompt)
+		print('choice: %s' % (resp.strip(),))
 		choice = None
 		for i in range(len(resp)):
 			if resp[i] == '[':
@@ -283,6 +294,8 @@ However, for now, please keep your repsonses short and general. Do not include l
 		if len(resp) >= 2 and resp[0] == '"' and resp[-1] == '"':
 			resp = resp[1:-1]
 
+		print('preselect resp: %s' % (resp,))
+
 		# print(prompt)
 		# print(resp)
 
@@ -300,7 +313,8 @@ However, for now, please keep your repsonses short and general. Do not include l
 
 	def ground_action(self, known_actions, world_state, action):
 		chosen_action_pred = self.choose_action_pred(known_actions, world_state, action)
-		print('chose pred %s' % chosen_action_pred)
+		print('chose pred %s for "%s"' % (chosen_action_pred, action))
+		print('kas were %s' % (known_actions,))
 
 		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
 
@@ -331,10 +345,13 @@ However, for now, please keep your repsonses short and general. Do not include l
 
 		err_msg = ''
 		if chosen_action_args is None:
-			# The arg grounder failed. We'll ask for some manually.
+			if CONFIRM_GPT:
+				# The arg grounder failed. We'll ask for some manually.
 
-			err_msg = "Sorry, but I wasn't able to figure out what objects go with the action <code>%s</code> here. Could you help me choose them?"%chosen_action_pred
-			chosen_action_args = chosen_action_pred + '(' + ','.join([objs[0] for _ in range(len(canonical_action_args))]) + ')'
+				err_msg = "Sorry, but I wasn't able to figure out what objects go with the action <code>%s</code> here. Could you help me choose them?"%chosen_action_pred
+				chosen_action_args = chosen_action_pred + '(' + ','.join([objs[0] for _ in range(len(canonical_action_args))]) + ')'
+			else:
+				chosen_action_args = chosen_action_pred + '()'
 		else:
 			# The arg grounder was wrong. We'll ask for corrections.
 			err_msg = self.maybe_arg_error_msg(known_actions, chosen_action_args)
@@ -819,6 +836,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 				new_pred_and_args = self.ground_new_args(action, subtree_objects)
 				new_pred = new_pred_and_args.split('(')[0]
 				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',') if len(x.strip()) > 0]
+				# new_args = [x for x in new_args if x.strip().lower() in ['pot', 'onion', 'tomato', 'dropoff', 'plate']]
 
 
 				if CONFIRM_GPT:
