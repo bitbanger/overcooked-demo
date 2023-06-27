@@ -80,7 +80,7 @@ class GPTCompleter:
 				stop=None,
 			).choices[0].text
 
-	def get_chat_gpt_completion(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, retries=5):
+	def get_chat_gpt_completion(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, retries=5, system_intro=None):
 		res = None
 		# print(prompt)
 		for i in range(retries):
@@ -89,7 +89,7 @@ class GPTCompleter:
 			else:
 				print('.', end='')
 			try:
-				res = self.get_chat_gpt_completion_helper(prompt, temp=temp, rep_pen=rep_pen, max_length=max_length, stop=stop)
+				res = self.get_chat_gpt_completion_helper(prompt, temp=temp, rep_pen=rep_pen, max_length=max_length, stop=stop, system_intro=system_intro)
 			except openai.error.RateLimitError:
 				continue
 			except openai.error.ServiceUnavailableError:
@@ -99,7 +99,7 @@ class GPTCompleter:
 
 		return res
 
-	def get_chat_gpt_completion_helper(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None):
+	def get_chat_gpt_completion_helper(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, system_intro=None):
 		# prompt_msgs = [x.strip() for x in prompt.split('***') if len(x.strip()) > 0]
 		prompt_msgs = [x.strip() for x in prompt.split('***')]
 		# print(prompt_msgs)
@@ -114,9 +114,14 @@ class GPTCompleter:
 		# print('RAW MSGS:')
 		# print(annotated_msgs)
 
+		if system_intro is not None:
+			annotated_msgs = [{'role': 'system', 'content': system_intro.strip()}] + annotated_msgs
+
+		# print(annotated_msgs)
+
 		if temp == 0:
-			key = hash(('chat', prompt, rep_pen, max_length, stop))
-			key = int(hashlib.md5(str(('chat', prompt, rep_pen, max_length, stop)).encode('utf-8')).hexdigest(), 16)
+			key = hash(('chat', prompt, rep_pen, max_length, stop, system_intro))
+			key = int(hashlib.md5(str(('chat', prompt, rep_pen, max_length, stop, system_intro)).encode('utf-8')).hexdigest(), 16)
 			if key not in self.cache:
 				self.cache[key] = openai.ChatCompletion.create(
 					model='gpt-3.5-turbo',

@@ -12,7 +12,7 @@ from overcooked_ai_py.mdp.actions import Action, Direction
 # from HTNAgent.htn_overcooked_operators import overcooked_methods, overcooked_actions
 # from HTNAgent.tact_agent import TACTAgent
 
-from htnparser.itl import InteractiveTaskLearner, REQUEST, EXPLANATION, INSTRUCTION
+from htnparser.itl import InteractiveTaskLearner, REQUEST, EXPLANATION, INSTRUCTION, CHAT
 
 import html
 import sys
@@ -635,36 +635,50 @@ class ValAI():
 				return Action.STAY, None
 
 			# Intent classification
-			intent_tup = self.itl.classify_intent(inp)
+			intent_tup = self.itl.classify_intent(inp.strip())
 			intent = intent_tup[0]
-			if intent == REQUEST:
+			if intent == CHAT:
+				# print('chat')
+				# self.out_fn("chatting back!")
+				self.out_fn(self.itl.parser.chat_back())
+				return Action.STAY, None
+			elif intent == REQUEST:
 				print('request')
 			elif intent == INSTRUCTION:
 				print('instructing VAL to perform action %s' % (intent_tup[1],))
 			elif intent == EXPLANATION:
 				print('requesting that VAL explain action %s' % (intent_tup[1],))
-				if 'explain how to' in intent_tup[1].lower():
-					expl_req = intent_tup[1].strip()[len('explain how to'):].strip()
-				expl_actions = self.itl.process_instruction(expl_req, clarify_unknowns=False, only_depth=1)
-				expl_actions_fmt = ''
-				for ea in expl_actions:
-					if ea[0] == 'action_stream':
-						continue
-					spl = ea.strip().split(' ')
-					if len(spl) > 1:
-						expl_actions_fmt = expl_actions_fmt + '\n- %s(%s)' % (spl[0], spl[1])
-					else:
-						expl_actions_fmt = expl_actions_fmt + '\n- %s()' % (spl[0],)
-				expl_prompt = self.itl.parser.load_prompt('prompts/chat_explainer.txt')
-				expl = self.itl.parser.gpt.get_chat_gpt_completion(expl_prompt%(expl_actions_fmt.strip(),)).strip()
-				print(expl)
-				print('done explaining')
-				self.out_fn(expl)
+				try:
+					if 'explain how to' in intent_tup[1].lower():
+						expl_req = intent_tup[1].strip()[len('explain how to'):].strip()
+					expl_actions = self.itl.process_instruction(expl_req, clarify_unknowns=False, only_depth=1)
+					expl_actions_fmt = ''
+					for ea in expl_actions:
+						if ea[0] == 'action_stream':
+							continue
+						spl = ea.strip().split(' ')
+						if len(spl) > 1:
+							expl_actions_fmt = expl_actions_fmt + '\n- %s(%s)' % (spl[0], spl[1])
+						else:
+							expl_actions_fmt = expl_actions_fmt + '\n- %s()' % (spl[0],)
+					expl_prompt = self.itl.parser.load_prompt('prompts/chat_explainer.txt')
+					expl = self.itl.parser.gpt.get_chat_gpt_completion(expl_prompt%(expl_actions_fmt.strip(),)).strip()
+					print(expl)
+					print('done explaining')
+					self.out_fn(expl)
+				except:
+					print('error explaining; defaulting to chat')
+					self.out_fn(self.itl.parser.chat_back())
 				self.need_inp = True
 				return Action.STAY, None
 
 			# self.inp_queue = self.itl.process_instruction(inp, clarify_hook=clarify_hook2) + ['SENTINEL']
-			self.inp_queue = peekable(self.itl.process_instruction(inp, clarify_hook=clarify_hook2))
+			try:
+				self.inp_queue = peekable(self.itl.process_instruction(inp, clarify_hook=clarify_hook2))
+			except:
+				print('ERROR with inp %s and intent %s' % (inp.strip(), intent))
+				self.out_fn(self.itl.gpt_parser.chat_back())
+				return Action.STAY, None
 			# self.old_inp_queue = self.inp_queue[:]
 			# self.last_inp_queue_size = len(self.inp_queue)-1
 			self.state_snapshots.append(self.build_state_dict())

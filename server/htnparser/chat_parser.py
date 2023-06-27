@@ -92,6 +92,25 @@ class ChatParser:
 
 		return ret
 
+	def chat_back(self):
+		system_intro = r'''You are a system called VAL: the Verbal Apprentice Learner. You were created by the Teachable Artificial Intelligence Lab (TAIL) at Georgia Tech. You utilize a combination of large language models and symbolic task knowledge to answer questions and perform actions. You are a hybrid neuro-symbolic intelligence.
+
+However, for now, please keep your repsonses short and general. Do not include lots of extra information, and do not make any concrete suggestions. You're just casually chatting!'''
+
+		# Select the most recent log folder
+		log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
+
+		log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
+
+		msgs = []
+		with open(log_fn, 'r') as f:
+			for line in f.read().split('\n'):
+				msg = ':'.join([x.strip() for x in line.split(':')][1:]).strip()
+				if len(msg) > 0:
+					msgs.append(msg)
+
+		return self.gpt.get_chat_gpt_completion('\n***\n'.join(msgs), system_intro=system_intro)
+
 	@staticmethod
 	def load_prompt(prompt_fn):
 		new_fn = os.path.join(os.path.dirname(__file__), prompt_fn)

@@ -8,6 +8,7 @@ from .chat_parser import ChatParser
 REQUEST = '#REQUEST#'
 INSTRUCTION = '#INSTRUCTION#'
 EXPLANATION = '#EXPLANATION#'
+CHAT = '#CHAT#'
 
 # InteractiveTaskLearner (ITL) is a stateful class meant to
 # contain and manage the lifetime knowledge of an interactive
@@ -174,15 +175,19 @@ class InteractiveTaskLearner:
 
 		cls = self.parser.gpt.get_chat_gpt_completion(prompt%utterance.strip())
 
-		intent = REQUEST
+		intent = CHAT
 		if "1" in cls:
 			intent = REQUEST
 		elif "2" in cls:
 			intent = INSTRUCTION
 		elif "3" in cls:
 			intent = EXPLANATION
+		elif "4" in cls:
+			intent = CHAT
 
-		if intent == REQUEST:
+		if intent == CHAT:
+			return (intent,)
+		elif intent == REQUEST:
 			return (intent,)
 		elif intent == INSTRUCTION:
 			# get the name of the task they're teaching
