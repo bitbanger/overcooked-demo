@@ -92,6 +92,8 @@ class GPTCompleter:
 				res = self.get_chat_gpt_completion_helper(prompt, temp=temp, rep_pen=rep_pen, max_length=max_length, stop=stop)
 			except openai.error.RateLimitError:
 				continue
+			except openai.error.ServiceUnavailableError:
+				continue
 
 			break
 
