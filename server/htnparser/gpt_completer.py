@@ -120,7 +120,8 @@ class GPTCompleter:
 		# print(annotated_msgs)
 
 		# model_name = 'gpt-3.5-turbo'
-		model_name = 'gpt-3.5-turbo-0613'
+		# model_name = 'gpt-3.5-turbo-0613'
+		model_name = 'gpt-3.5-turbo-0301'
 
 		if temp == 0:
 			key = hash(('chat', model_name, prompt, rep_pen, max_length, stop, system_intro))

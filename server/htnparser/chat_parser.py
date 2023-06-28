@@ -82,6 +82,9 @@ class ChatParser:
 
 			ret = inp
 
+		if ret.strip().lower() != 'undo':
+			self.save_state()
+
 		# Select the most recent log folder
 		log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
 
@@ -217,8 +220,8 @@ However, for now, please keep your repsonses short and general. Do not include l
 		# return self.gpt.get_chat_gpt_completion(self.para_prompt%('"%s" and %s' % (action, pred)))[0] == 'Y'
 		vp = self.verbalize_pred(pred)
 		print('do %s and %s mean the same thing?' % (action, vp))
-		# ans = self.gpt.get_chat_gpt_completion('Could "%s" and "%s" mean the same thing? Please answer either "yes" or "no".' % (action, vp)).lower()
-		ans = self.gpt.get_chat_gpt_completion('I know an action called "%s", but a non-native English speaker told me to "%s". I know they might not have exactly the same meaning, but could they have meant "%s"? Please respond either "yes" or "no".' % (action, vp, action)).lower()
+		ans = self.gpt.get_chat_gpt_completion('Do "%s" and "%s" mean similar things? Please answer either "yes" or "no".' % (action, vp)).lower()
+		# ans = self.gpt.get_chat_gpt_completion('I know an action called "%s", but a non-native English speaker told me to "%s". I know they might not have exactly the same meaning, but could they have meant "%s"? Please respond either "yes" or "no".' % (action, vp, action)).lower()
 		print('ans: %s' % (ans.strip(),))
 		return 'yes' in ans
 

@@ -3,7 +3,7 @@ from json import dumps
 from more_itertools import peekable
 from select import select
 from threading import Thread
-from time import sleep
+from time import sleep, time
 
 from overcooked_ai_py.mdp.actions import Action, Direction
 
@@ -30,6 +30,7 @@ PRINT_STATE = False
 
 class ValAI():
 	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None):
+		self.state_queue = []
 		self.premove_sender = premove_sender
 		self.app = app
 		self.socketio = socketio
@@ -49,6 +50,8 @@ class ValAI():
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
 		# self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar, put(<arg1>,<arg2>) - a learned action", in_stream=self.in_stream, out_fn=self.out_fn)
 		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender)
+		self.itl.parser.reverse_state = self.reverse_state
+		self.itl.parser.save_state = self.save_state
 
 		self.inp_queue = []
 
@@ -107,6 +110,15 @@ class ValAI():
 		else:
 			return None
 	'''
+
+	def reverse_state(self):
+		if len(self.state_queue) > 0:
+			self.game.state = self.state_queue[-1]
+			self.state = self.state_queue[-1]
+			self.state_queue = self.state_queue[:-1]
+
+	def save_state(self):
+		self.state_queue.append(self.state.deepcopy())
 
 	def wait_input(self, prompt=''):
 		return self.itl.wait_input(prompt)
@@ -508,6 +520,9 @@ class ValAI():
 				return Action.STAY
 
 	def action(self, state):
+		if len(self.state_queue) == 0:
+			self.state_queue = [self.game.mdp.get_standard_start_state()]
+
 		# print('action called')
 		if self.first_action:
 			self.first_action = False
@@ -634,6 +649,17 @@ class ValAI():
 				# print('staying')
 				return Action.STAY, None
 
+			if inp.strip().lower() == 'undo':
+				if len(self.state_queue) > 0:
+					print('state queue length is %d' % (len(self.state_queue),))
+					# self.state_queue = self.state_queue[:-1]
+					self.game.state = self.state_queue[-1]
+					self.state = self.state_queue[-1]
+					self.state_queue = self.state_queue[:-1]
+					print('state queue length is now %d' % (len(self.state_queue),))
+					self.game.start_time = time()
+				return Action.STAY, None
+
 			# Intent classification
 			intent_tup = self.itl.classify_intent(inp.strip())
 			intent = intent_tup[0]
@@ -677,7 +703,7 @@ class ValAI():
 				self.inp_queue = peekable(self.itl.process_instruction(inp, clarify_hook=clarify_hook2))
 			except:
 				print('ERROR with inp %s and intent %s' % (inp.strip(), intent))
-				self.out_fn(self.itl.gpt_parser.chat_back())
+				self.out_fn(self.itl.parser.chat_back())
 				return Action.STAY, None
 			# self.old_inp_queue = self.inp_queue[:]
 			# self.last_inp_queue_size = len(self.inp_queue)-1
@@ -689,6 +715,8 @@ class ValAI():
 
 		try:
 			inp = next(self.inp_queue)
+			# self.state_queue.append(self.game.state.deepcopy())
+			# print('adding state to state queue')
 			print('got inp %s' % (inp,))
 			while inp[0] != 'action_stream':
 				print('&got inp %s' % (inp,))
