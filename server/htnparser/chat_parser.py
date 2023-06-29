@@ -36,7 +36,8 @@ def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
 
 class ChatParser:
-	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None):
+	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, silenced=False):
+		self.silenced = silenced
 		self.premove_sender = premove_sender
 		self.app = app
 		self.socketio = socketio
@@ -49,15 +50,26 @@ class ChatParser:
 		self.para_prompt = self.load_prompt(para_fn)
 		self.verb_prompt = self.load_prompt(verb_fn)
 
+		self.in_jail_and_now_dead = False
+
 		self.in_stream = in_stream
-		self.out_fn = out_fn
+		self.raw_out_fn = out_fn
 
 		self.life_depends_prompt = self.load_prompt('prompts/life_depends.txt')
 		self.preselect_prompt = self.load_prompt('prompts/preselect_grounder.txt')
 
 		self.gpt = GPTCompleter()
 
+	def out_fn(self, outp):
+		if self.in_jail_and_now_dead or self.silenced:
+			return
+
+		self.raw_out_fn(outp)
+
 	def wait_input(self, prompt=''):
+		if self.in_jail_and_now_dead:
+			return '#TERMINATED#'
+
 		if prompt:
 			self.out_fn(prompt)
 
@@ -67,10 +79,11 @@ class ChatParser:
 			resp = self.chatlog[0].strip()
 			# with self.app.app_context():
 				# self.socketio.emit('premovemsg_internal', {'msg': resp.strip(), 'gameid': self.gameid})
-			self.premove_sender(self.gameid, resp.strip())
+			self.premove_sender(self.gameid, resp.strip(), silenced=self.silenced)
 			self.chatlog = self.chatlog[1:]
 			ret = resp.strip()
 		else:
+			self.silenced = False
 			inp = None
 			while not inp:
 				inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
@@ -80,10 +93,16 @@ class ChatParser:
 			if inp == '#NONE#':
 				inp = ''
 
+			if inp == '#TERMINATE#':
+				inp = ''
+				self.in_jail_and_now_dead = True
+				self.out_fn = lambda x: ''
+				return inp
+
 			ret = inp
 
-		if ret.strip().lower() != 'undo':
-			self.save_state()
+		# if ret.strip().lower() != 'undo' and not self.in_jail_and_now_dead:
+			# self.save_state()
 
 		# Select the most recent log folder
 		log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
@@ -96,6 +115,9 @@ class ChatParser:
 		return ret
 
 	def chat_back(self):
+		if self.in_jail_and_now_dead:
+			return ''
+
 		system_intro = r'''You are a system called VAL: the Verbal Apprentice Learner. You were created by the Teachable Artificial Intelligence Lab (TAIL) at Georgia Tech. You utilize a combination of large language models and symbolic task knowledge to answer questions and perform actions. You are a hybrid neuro-symbolic intelligence.
 
 However, for now, please keep your repsonses short and general. Do not include lots of extra information, and do not make any concrete suggestions. You're just casually chatting!'''
@@ -696,6 +718,15 @@ However, for now, please keep your repsonses short and general. Do not include l
 		# TODO: uhh, should this use learned_or_known? idk
 		return ('known', pred, args)
 
+	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0, clarify_unknowns=True):
+		try:
+			return self.get_actions_helper(known_actions, world_state, text, clarify_hook=clarify_hook, clarify_action=clarify_action, level=level, clarify_unknowns=clarify_unknowns)
+		except:
+			if self.in_jail_and_now_dead:
+				pass
+			else:
+				raise
+
 	# get_actions takes a list of known actions, a world state,
 	# and a textual description of an action sequence, and returns
 	# two things:
@@ -708,7 +739,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 	# a recursive call to itself on new input. When the process concludes,
 	# all new actions will be groundable in terms of actions known prior
 	# to the call.
-	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0, clarify_unknowns=True):
+	def get_actions_helper(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0, clarify_unknowns=True):
 		global GLOBAL_CHOICE_ID
 
 		if clarify_hook is None:

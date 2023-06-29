@@ -160,7 +160,7 @@ msgerForm.addEventListener("submit", event => {
 socket.on('premovemsg', function(data) {
     console.log('got premove');
 	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
-	if (data['id'] == webmuxid) {
+	if (data['id'] == webmuxid && !data['silenced']) {
 		appendMessage(PERSON_NAME, PERSON_IMG, "right", data['msg']);
 	}
 });

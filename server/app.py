@@ -473,9 +473,9 @@ def on_create(data):
         _create_game(user_id, game_name, params, chatlog=chatlog)
     
 
-def send_premove_msg(gameid, msg):
+def send_premove_msg(gameid, msg, silenced=False):
     webmuxid = game_id_to_webmux[gameid]
-    socketio.emit('premovemsg', {'msg': msg, 'id': webmuxid})
+    socketio.emit('premovemsg', {'msg': msg, 'id': webmuxid, 'silenced': silenced})
 
 @socketio.on('join')
 def on_join(data):
@@ -575,6 +575,31 @@ def on_message(msg):
         val_ai.in_stream.put('#NONE#')
     else:
         val_ai.in_stream.put(msg['msg'].strip())
+
+@socketio.on('undo')
+def on_message(msg):
+    # val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
+
+    # print('got y/n ans:')
+    # print(msg)
+    # in_stream_w.write(msg['msg'].strip() + '\n')
+    # if msg['msg'].strip() == '':
+        # val_ai.in_stream.put('#NONE#')
+    # else:
+        # val_ai.in_stream.put(msg['msg'].strip())
+
+		curr_game = get_curr_game(request.sid)
+		curr_val_ai = curr_game.npc_policies['StayAI_1']
+
+		curr_val_ai.itl.parser.in_jail_and_now_dead = True
+		curr_val_ai.itl.parser.in_stream.put('#TERMINATE#')
+
+		chatlog = curr_val_ai.inps[:-1]
+		new_state = curr_val_ai.state_queue[-1]
+
+		curr_game.state = new_state
+
+		get_curr_game(request.sid).npc_policies['StayAI_1'] = ValAI(self, app=self, socketio=self.socketio, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_id), chatlog=chatlog, gameid=curr_game.id, premove_sender=curr_game.premove_sender, silenced=True)
 
 @socketio.on('connect')
 def on_connect():
