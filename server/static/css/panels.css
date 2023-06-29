@@ -2,10 +2,15 @@
 	margin-left: 0px;
 }
 
+#toppanel {
+	margin: auto;
+	text-align: center;
+}
+
 #leftpanel {
 	float: left;
 	width: calc(100% - 764.4px);
-	height: 90vh;
+	height: 80vh;
 }
 
 #rightpanel {

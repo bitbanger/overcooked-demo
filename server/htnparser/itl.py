@@ -221,10 +221,10 @@ class InteractiveTaskLearner:
 					(substeps, arg_names) = new_actions[learned_name]
 					self.generalize_learned_action((learned_name, substeps, arg_names))
 				learned_fmt = ''
-				learned_names = sorted([x for x in new_actions])
+				learned_names = sorted([x for x in new_actions if len(x.strip())>0])
 				if len(learned_names) > 0:
 					for i in range(len(learned_names)):
-						if i == len(learned_names)-1:
+						if i == len(learned_names)-1 and len(learned_names) > 1:
 							learned_fmt = learned_fmt + ', and '
 						elif i != 0:
 							learned_fmt = learned_fmt + ', '
