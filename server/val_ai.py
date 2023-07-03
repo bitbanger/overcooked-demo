@@ -674,29 +674,44 @@ class ValAI():
 				print('instructing VAL to perform action %s' % (intent_tup[1],))
 			elif intent == EXPLANATION:
 				print('requesting that VAL explain action %s' % (intent_tup[1],))
-				try:
-					if 'explain how to' in intent_tup[1].lower():
-						expl_req = intent_tup[1].strip()[len('explain how to'):].strip()
-					expl_actions = self.itl.process_instruction(expl_req, clarify_unknowns=False, only_depth=1)
-					expl_actions_fmt = ''
-					for ea in expl_actions:
-						if ea[0] == 'action_stream':
-							continue
-						spl = ea.strip().split(' ')
-						if len(spl) > 1:
-							expl_actions_fmt = expl_actions_fmt + '\n- %s(%s)' % (spl[0], spl[1])
-						else:
-							expl_actions_fmt = expl_actions_fmt + '\n- %s()' % (spl[0],)
+				# try:
+				if 'explain how to' in intent_tup[1].lower():
+					expl_req = intent_tup[1].strip()[len('explain how to'):].strip()
+				expl_actions = self.itl.process_instruction(expl_req, clarify_unknowns=False, only_depth=1)
+				expl_actions_fmt = ''
+				nga = False
+				for ea in expl_actions:
+					print(ea)
+					if ea == 'noGoodAction':
+						print('got noGoodAction')
+						nga = True
+						break
+					if ea[0] == 'action_stream':
+						continue
+					spl = ea.strip().split(' ')
+					if len(spl) > 1:
+						expl_actions_fmt = expl_actions_fmt + '\n- %s(%s)' % (spl[0], spl[1])
+					else:
+						expl_actions_fmt = expl_actions_fmt + '\n- %s()' % (spl[0],)
+				if nga:
+					print('here1')
+					if self.itl.parser.yesno("Sorry, but I don't know how to \"%s\" yet. Would you like to teach me now?" % (expl_req,)):
+						print('here2')
+						inp = expl_req
+					else:
+						self.out_fn("OK. Is there anything else I can do for you?")
+						return Action.STAY, None
+				else:
 					expl_prompt = self.itl.parser.load_prompt('prompts/chat_explainer.txt')
 					expl = self.itl.parser.gpt.get_chat_gpt_completion(expl_prompt%(expl_actions_fmt.strip(),)).strip()
 					print(expl)
 					print('done explaining')
 					self.out_fn(expl)
-				except:
-					print('error explaining; defaulting to chat')
-					self.out_fn(self.itl.parser.chat_back())
-				self.need_inp = True
-				return Action.STAY, None
+					# except:
+						# print('error explaining; defaulting to chat')
+						# self.out_fn(self.itl.parser.chat_back())
+					self.need_inp = True
+					return Action.STAY, None
 
 			# self.inp_queue = self.itl.process_instruction(inp, clarify_hook=clarify_hook2) + ['SENTINEL']
 			try:

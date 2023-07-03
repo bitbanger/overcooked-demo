@@ -86,6 +86,10 @@ class InteractiveTaskLearner:
 				(status, name, args) = step
 			except:
 				print('step was %s' % (step,))
+			if step == 'noGoodAction':
+				leaves.append('noGoodAction')
+				continue
+
 			(status, name, args) = step
 
 			# If any of our args have been bound, use the values instead

@@ -29,11 +29,11 @@ YESNOADD = r'''
 
 <button class="msger-yes-btn" id="msger-yes-btn" value="Y">Yes</button><button class="msger-maybe-btn" id="msger-maybe-btn" value="M">Add more steps</button><button class="msger-no-btn" id="msger-no-btn" value="N">No, something's wrong</button>'''
 
-def yesno(yes_msg='Yes', no_msg='No'):
-	return CUSTOM_YESNO % (yes_msg.strip(), no_msg.strip())
-
 def indent(s, n):
 	return '\t'*n + s.replace('\n', '\n'+'\t'*n)
+
+def mk_yesno(yes_msg='Yes', no_msg='No'):
+	return CUSTOM_YESNO % (yes_msg.strip(), no_msg.strip())
 
 class ChatParser:
 	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None):
@@ -56,6 +56,9 @@ class ChatParser:
 		self.preselect_prompt = self.load_prompt('prompts/preselect_grounder.txt')
 
 		self.gpt = GPTCompleter()
+
+	def yesno(self, prompt, yes_msg='Yes', no_msg='No'):
+		return self.wait_input(prompt+mk_yesno(yes_msg=yes_msg, no_msg=no_msg)).lower().strip() == 'y'
 
 	def wait_input(self, prompt=''):
 		if prompt:
@@ -624,7 +627,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 
 		confirm_msg = "I wasn't able to identify a known action for the command <i>%s</i>." % (action_nl,)
 		confirm_msg = confirm_msg + '\n\nWould you like to review the list of known actions to see if I made a mistake?'
-		confirm_msg = confirm_msg + yesno("Yes", "No; I'll teach you this new action")
+		confirm_msg = confirm_msg + mk_yesno("Yes", "No; I'll teach you this new action")
 
 		if self.wait_input(confirm_msg) == 'N':
 			return 'noGoodAction'
