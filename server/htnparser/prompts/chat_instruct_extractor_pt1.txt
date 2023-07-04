@@ -1,3 +1,3 @@
 A user is trying to teach me an action. Here's what they said: "%s"
 
-What action are they trying to teach? Please put it in quotes.
+What action are they trying to teach? Please only respond with one action. For example, if they said "I want to teach you how to clean the house", you'd say "clean the house". Or if they said "to pack the bag, first put clothes in the bag", you'd say "pack the bag". Remember to answer in quotes, and only use one verb.

@@ -38,8 +38,8 @@ def mk_yesno(yes_msg='Yes', no_msg='No'):
 class ChatParser:
 	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None):
 		self.premove_sender = premove_sender
-		self.app = app
-		self.socketio = socketio
+		# self.app = app
+		# self.socketio = socketio
 		self.gameid = gameid
 		self.chatlog = chatlog
 		self.act_prompt = self.load_prompt(act_prompt_fn)

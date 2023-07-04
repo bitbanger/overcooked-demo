@@ -1,3 +1,4 @@
+import dill
 import pickle
 import sys
 
@@ -31,8 +32,8 @@ class InteractiveTaskLearner:
 	# "PRED(<arg1>, <arg2>, ...) - an action description"
 	def __init__(self, primitive_actions, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None):
 		self.premove_sender = premove_sender
-		self.app = app
-		self.socketio = socketio
+		# self.app = app
+		# self.socketio = socketio
 		self.gen_task_knowledge = dict()
 
 		self.gameid = gameid
@@ -40,10 +41,16 @@ class InteractiveTaskLearner:
 		self.arg_num = 0
 
 		self.chatlog = chatlog
+
+		if type(self.chatlog) == str:
+			with open(self.chatlog, 'rb') as f:
+				self.gen_task_knowledge = pickle.load(f)
+			self.chatlog = []
+
 		self.out_fn = out_fn
 
 		# self.parser = ModularHTNParser()
-		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn, chatlog=chatlog, gameid=gameid, socketio=socketio, app=app, premove_sender=premove_sender)
+		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn, chatlog=self.chatlog, gameid=gameid, socketio=socketio, app=app, premove_sender=premove_sender)
 
 		self.primitive_actions = [x.strip() for x in primitive_actions.split(', ')]
 
@@ -160,12 +167,13 @@ class InteractiveTaskLearner:
 
 	def extract_instruct_action(self, utterance):
 		prompt1 = self.parser.load_prompt('prompts/chat_instruct_extractor_pt1.txt')
-		prompt2 = self.parser.load_prompt('prompts/chat_instruct_extractor_pt2.txt')
+		# prompt2 = self.parser.load_prompt('prompts/chat_instruct_extractor_pt2.txt')
 
 		r1 = self.parser.gpt.get_chat_gpt_completion(prompt1%utterance.strip())
-		r2 = self.parser.gpt.get_chat_gpt_completion(prompt2%(utterance.strip(), r1.strip()))
+		return r1.split('"')[1].strip()
+		# r2 = self.parser.gpt.get_chat_gpt_completion(prompt2%(utterance.strip(), r1.strip()))
 
-		return r2.split('"')[1].strip()
+		# return r2.split('"')[1].strip()
 
 	def extract_explain_action(self, utterance):
 		prompt = self.parser.load_prompt('prompts/chat_explain_extractor.txt')
@@ -261,12 +269,11 @@ class InteractiveTaskLearner:
 
 	def save(self, filename):
 		with open(filename, 'wb+') as f:
-			pickle.dump(self, f)
+			pickle.dump(self.gen_task_knowledge, f)
 
-	@staticmethod
-	def load(filename):
+	def load(self, filename):
 		with open(filename, 'rb') as f:
-			ret = pickle.load(f)
+			self.gen_task_knowledge = pickle.load(f)
 			# ret.parser.completer.init_openai_api()
-			ret.parser.completer.__init__()
-			return ret
+			# ret.parser.completer.__init__()
+			# return ret

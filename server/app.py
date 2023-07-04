@@ -464,11 +464,14 @@ def on_create(data):
         chatlog_filename = data.get('chatlog_filename', '')
         chatlog = []
         if chatlog_filename:
-            try:
-                with open(chatlog_filename, 'r') as f:
-                    chatlog = [x.strip() for x in f.read().strip().split('\n') if x.strip()]
-            except:
-                print('error opening file "%s"' % (chatlog_filename,))
+            if chatlog_filename == 'val_model':
+                chatlog = 'val_model'
+            else:
+                try:
+                    with open(chatlog_filename, 'r') as f:
+                        chatlog = [x.strip() for x in f.read().strip().split('\n') if x.strip()]
+                except:
+                    print('error opening file "%s"' % (chatlog_filename,))
 
         _create_game(user_id, game_name, params, chatlog=chatlog)
     

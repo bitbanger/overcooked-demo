@@ -153,7 +153,9 @@ msgerForm.addEventListener("submit", event => {
 
   socket.emit('message', {'msg': msgText})
 
-  appendMessage(PERSON_NAME, PERSON_IMG, "right", msgText);
+  if(msgText != "load") {
+    appendMessage(PERSON_NAME, PERSON_IMG, "right", msgText);
+  }
   msgerInput.value = "";
 });
 

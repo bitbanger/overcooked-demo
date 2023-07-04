@@ -30,6 +30,8 @@ PRINT_STATE = False
 
 class ValAI():
 	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None):
+		self.sent_first_msg = False
+		self.just_chatted = False
 		self.state_queue = []
 		self.premove_sender = premove_sender
 		self.app = app
@@ -631,7 +633,16 @@ class ValAI():
 				msg = msg + "\n\t<i><small>(to teach new actions, just use them in a sentence, and I'll ask for clarification!)</small></i>"
 				# msg = msg + "\n\nWhat should I do?"
 
-				# self.out_fn(msg)
+				if not self.sent_first_msg:
+					self.out_fn(msg)
+					self.out_fn('How can I help you today?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
+					self.sent_first_msg = True
+				else:
+					if not self.just_chatted and False:
+						self.out_fn(msg)
+						self.out_fn('Is there anything else I can do for you?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
+					else:
+						self.just_chatted = False
 				# self.out_fn('What should I do?')
 				# self.out_fn('User: ', end='')
 				self.need_inp = False
@@ -647,6 +658,14 @@ class ValAI():
 				self.need_inp = True
 			else:
 				# print('staying')
+				return Action.STAY, None
+
+			if inp.strip().lower() == 'save':
+				self.itl.save('val_model')
+				return Action.STAY, None
+
+			if inp.strip().lower() == 'load':
+				self.itl.load('val_model')
 				return Action.STAY, None
 
 			if inp.strip().lower() == 'undo':
@@ -667,11 +686,17 @@ class ValAI():
 				# print('chat')
 				# self.out_fn("chatting back!")
 				self.out_fn(self.itl.parser.chat_back())
+				self.just_chatted = True
 				return Action.STAY, None
 			elif intent == REQUEST:
+				self.out_fn("Sure! Here's how I would do that. Take a look over at the left game panel!")
+				sleep(1)
 				print('request')
 			elif intent == INSTRUCTION:
 				print('instructing VAL to perform action %s' % (intent_tup[1],))
+				self.out_fn("Sure! Here's how I would \"<i>%s</i>\". Take a look over at the left game panel!\n\n<small>By the way, if you'd like me to explain how to do that in words, you can say something like \"please explain how to %s\".</small>" % (intent_tup[1], intent_tup[1]))
+				sleep(1)
+				inp = intent_tup[1]
 			elif intent == EXPLANATION:
 				print('requesting that VAL explain action %s' % (intent_tup[1],))
 				# try:
@@ -719,6 +744,7 @@ class ValAI():
 			except:
 				print('ERROR with inp %s and intent %s' % (inp.strip(), intent))
 				self.out_fn(self.itl.parser.chat_back())
+				self.just_chatted = True
 				return Action.STAY, None
 			# self.old_inp_queue = self.inp_queue[:]
 			# self.last_inp_queue_size = len(self.inp_queue)-1
