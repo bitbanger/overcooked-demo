@@ -66,8 +66,7 @@ class ChatParser:
 		return self.wait_input(prompt+mk_yesno(yes_msg=yes_msg, no_msg=no_msg)).lower().strip() == 'y'
 
 	def out_fn(self, outp):
-		# if self.in_jail_and_now_dead or self.silenced:
-		if self.in_jail_and_now_dead:
+		if self.in_jail_and_now_dead or self.silenced:
 			return
 
 		self.raw_out_fn(outp)
@@ -113,13 +112,14 @@ class ChatParser:
 		# if ret.strip().lower() != 'undo' and not self.in_jail_and_now_dead:
 			# self.save_state()
 
-		# Select the most recent log folder
-		log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
+		if not self.silenced:
+			# Select the most recent log folder
+			log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
 
-		log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
+			log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
 
-		with open(log_fn, 'a+') as f:
-			f.write('User: %s\n' % (ret.strip(),))
+			with open(log_fn, 'a+') as f:
+				f.write('User: %s\n' % (ret.strip(),))
 
 		if ret != '#TERMINATED#' and ret != 'undo' and not self.silenced:
 			self.inps.append(ret)
@@ -147,6 +147,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 				msg = ':'.join([x.strip() for x in line.split(':')][1:]).strip()
 				if len(msg) > 0:
 					msgs.append(msg)
+		print(msgs)
 
 		return self.gpt.get_chat_gpt_completion('\n***\n'.join(msgs), system_intro=system_intro)
 

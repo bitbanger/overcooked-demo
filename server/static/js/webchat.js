@@ -2,7 +2,7 @@
 
 const msgerForm = get(".msger-inputarea");
 const msgerInput = get(".msger-input");
-const msgerChat = get(".msger-chat");
+var msgerChat = get(".msger-chat");
 
 const BOT_MSGS = [
 "Hi, how are you?",
@@ -25,6 +25,32 @@ socket.on('valmsg', function(data) {
 	}
 });
 
+socket.on('get_chat_html_state', function(data) {
+	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	if (data['id'] == webmuxid) {
+		socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
+	}
+});
+
+socket.on('set_chat_html_state', function(data) {
+	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	if (data['id'] == webmuxid) {
+		// socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
+		console.log('replacing ' + $('.msger-chat').html());
+		console.log('with ' + data['html']);
+		$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
+		$('.msger-chat').scrollTop($('.msger-chat')[0].scrollHeight);
+		msgerChat = get(".msger-chat");
+	}
+});
+
+socket.on('webchat_undo', function(data) {
+	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	if (data['id'] == webmuxid) {
+		// var num_player_msgs = 
+	}
+});
+
 $(document).ready(function() {
 	console.log('setting id');
 	var id = Math.floor(Math.random() * 10000000);
@@ -38,16 +64,22 @@ $(document).ready(function() {
 			var caught = true;
 
 			if (event.target.id == 'msger-yes-btn') {
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': 'Y'});
 			} else if (event.target.id == 'msger-no-btn') {
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': 'N'});
 			} else if (event.target.id == 'msger-maybe-btn') {
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': 'M'});
 			} else if (event.target.id == 'msger-bad-action-btn') {
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': 'action'});
 			} else if (event.target.id == 'msger-bad-args-btn') {
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': 'args'});
 			} else if (event.target.id == 'msger-bad-both-btn') {
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': 'both'});
 			} else {
 				caught = false;
@@ -70,6 +102,7 @@ $(document).ready(function() {
 				event.preventDefault();
 				// console.log(event.target.value);
 				// $(event.target).prop("disabled", true);
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				$(event.target).siblings(".msger-act-radio").prop("disabled", true);
 				socket.emit('message', {'msg': event.target.value});
 			}
@@ -87,6 +120,7 @@ $(document).ready(function() {
 					str = str + '\t' + $(this).val();
 				});
 				// console.log(str);
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': str});
 
 				$(event.target).children('.argdropdown').prop("disabled", true);
@@ -101,6 +135,7 @@ $(document).ready(function() {
 				$(event.target).children('.newargdropdown').each(function() {
 					str = str + '\t' + $(this).val();
 				});
+				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': str});
 
 				$(event.target).children('.newargdropdown').prop("disabled", true);
@@ -151,6 +186,7 @@ msgerForm.addEventListener("submit", event => {
   const msgText = msgerInput.value;
   if (!msgText) return;
 
+  socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
   socket.emit('message', {'msg': msgText})
 
   if(msgText != "load") {

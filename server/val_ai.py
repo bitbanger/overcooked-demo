@@ -30,6 +30,7 @@ PRINT_STATE = False
 
 class ValAI():
 	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None, silenced=False, start_state=None):
+		self.silenced = silenced
 		self.sent_first_msg = False
 		self.just_chatted = False
 		self.state_queue = []
@@ -646,15 +647,21 @@ class ValAI():
 				# msg = msg + "\n\nWhat should I do?"
 
 				if not self.sent_first_msg:
-					self.itl.parser.out_fn(msg)
-					self.itl.parser.out_fn('How can I help you today?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
-					self.sent_first_msg = True
-				else:
-					if not self.just_chatted and False:
+					if not self.silenced:
 						self.itl.parser.out_fn(msg)
-						self.itl.parser.out_fn('Is there anything else I can do for you?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
+						self.itl.parser.out_fn('How can I help you today?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
+						self.sent_first_msg = True
 					else:
-						self.just_chatted = False
+						self.silenced = False
+				else:
+					if not self.silenced:
+						if not self.just_chatted and False:
+							self.itl.parser.out_fn(msg)
+							self.itl.parser.out_fn('Is there anything else I can do for you?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
+						else:
+							self.just_chatted = False
+					else:
+						self.silenced = False
 				# self.itl.parser.out_fn('What should I do?')
 				# self.itl.parser.out_fn('User: ', end='')
 				self.need_inp = False
@@ -697,10 +704,11 @@ class ValAI():
 			intent_tup = self.itl.classify_intent(inp.strip())
 			intent = intent_tup[0]
 			if intent == CHAT:
-				# print('chat')
-				# self.itl.parser.out_fn("chatting back!")
-				self.itl.parser.out_fn(self.itl.parser.chat_back())
-				self.just_chatted = True
+				if not self.itl.parser.silenced:
+					# print('chat')
+					# self.itl.parser.out_fn("chatting back!")
+					self.itl.parser.out_fn(self.itl.parser.chat_back())
+					self.just_chatted = True
 				return Action.STAY, None
 			elif intent == REQUEST:
 				self.itl.parser.out_fn("Sure! Here's how I would do that. Take a look over at the left game panel!")
