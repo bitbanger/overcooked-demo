@@ -121,6 +121,7 @@ class ValAI():
 
 	def save_state(self):
 		self.state_queue.append(self.state.deepcopy())
+		print('now %d states, %d inps' % (len(self.state_queue), len(self.itl.parser.inps)))
 
 	def wait_input(self, prompt=''):
 		inp = self.itl.wait_input(prompt)
@@ -782,6 +783,9 @@ class ValAI():
 
 		inp = inp[1]
 		print('PULLING %s from inp_queue' % (inp,))
+		if self.itl.parser.silenced:
+			print('silenced, so not doing it')
+			return Action.STAY, None
 		if '#TERMINATED#' in inp:
 			return Action.STAY, None
 

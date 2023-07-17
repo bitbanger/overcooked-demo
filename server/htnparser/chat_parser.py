@@ -66,7 +66,8 @@ class ChatParser:
 		return self.wait_input(prompt+mk_yesno(yes_msg=yes_msg, no_msg=no_msg)).lower().strip() == 'y'
 
 	def out_fn(self, outp):
-		if self.in_jail_and_now_dead or self.silenced:
+		# if self.in_jail_and_now_dead or self.silenced:
+		if self.in_jail_and_now_dead:
 			return
 
 		self.raw_out_fn(outp)
@@ -120,7 +121,7 @@ class ChatParser:
 		with open(log_fn, 'a+') as f:
 			f.write('User: %s\n' % (ret.strip(),))
 
-		if ret != '#TERMINATED#' and ret != 'undo':
+		if ret != '#TERMINATED#' and ret != 'undo' and not self.silenced:
 			self.inps.append(ret)
 			print('added %s to rets' % (ret,))
 			self.save_state()
@@ -177,7 +178,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 			resp = self.gpt.get_chat_gpt_completion(prompt).strip()
 			if self.in_jail_and_now_dead:
 				return '#TERMINATED#'
-			print('segment resp %d. """%s"""' % (i, resp))
+			# print('segment resp %d. """%s"""' % (i, resp))
 			found_one = False
 			retrying = False
 			sorry_count = 0
@@ -256,15 +257,15 @@ However, for now, please keep your repsonses short and general. Do not include l
 	def is_paraphrase(self, action, pred):
 		# return self.gpt.get_chat_gpt_completion(self.para_prompt%('"%s" and %s' % (action, pred)))[0] == 'Y'
 		vp = self.verbalize_pred(pred)
-		print('do %s and %s mean the same thing?' % (action, vp))
+		# print('do %s and %s mean the same thing?' % (action, vp))
 		ans = self.gpt.get_chat_gpt_completion('Do "%s" and "%s" mean similar things? Please answer either "yes" or "no".' % (action, vp)).lower()
 		# ans = self.gpt.get_chat_gpt_completion('I know an action called "%s", but a non-native English speaker told me to "%s". I know they might not have exactly the same meaning, but could they have meant "%s"? Please respond either "yes" or "no".' % (action, vp, action)).lower()
-		print('ans: %s' % (ans.strip(),))
+		# print('ans: %s' % (ans.strip(),))
 		return 'yes' in ans
 
 	def ground_new_args(self, action, objects):
 		name = self.name_action(action)
-		print('grounding %s with objs %s' % (action, objects))
+		# print('grounding %s with objs %s' % (action, objects))
 		inp = 'OBJECTS: [%s]' % ', '.join([x for x in objects if len(x.strip()) > 0])
 		inp = inp + '\nPHRASE: "%s"' % action
 		inp = inp + '\nVERB: %s' % name.split('(')[0]
@@ -294,9 +295,9 @@ However, for now, please keep your repsonses short and general. Do not include l
 		# prompt = self.life_depends_prompt % (first_ka_str, obj_str, action, second_ka_str)
 
 		prompt = self.life_depends_prompt % (first_ka_str, action, second_ka_str)
-		print(prompt)
+		# print(prompt)
 		resp = self.gpt.get_chat_gpt_completion(prompt)
-		print('choice: %s' % (resp.strip(),))
+		# print('choice: %s' % (resp.strip(),))
 		choice = None
 		for i in range(len(resp)):
 			if resp[i] == '[':

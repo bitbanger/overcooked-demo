@@ -475,7 +475,7 @@ class OvercookedGame(Game):
             state = queue.get()
             state = self.state
             # print('GAME publishing state %s' % (state.to_dict()))
-            print('I am %s, policy_id is %s, policy is %s, asking for action' % (self, policy_id, policy))
+            # print('I am %s, policy_id is %s, policy is %s, asking for action' % (self, policy_id, policy))
             npc_action, _ = policy.action(state)
             # print('got npc_action %s' % (npc_action,))
             super(OvercookedGame, self).enqueue_action(policy_id, npc_action)

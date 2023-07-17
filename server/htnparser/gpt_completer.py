@@ -87,7 +87,7 @@ class GPTCompleter:
 		if self.in_jail_and_now_dead:
 			return '#TERMINATED#'
 			# print('in jail and now dead, but prompt is:')
-		print(prompt)
+		# print(prompt)
 		for i in range(retries):
 			if i == 0:
 				print('*', end='')

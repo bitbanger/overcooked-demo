@@ -602,17 +602,17 @@ def on_message(msg):
         curr_val_ai.itl.parser.gpt.in_jail_and_now_dead = True
         curr_val_ai.itl.parser.in_stream.put('#TERMINATE#')
 
+        print('%d states, %d inps' % (len(curr_val_ai.state_queue), len(curr_val_ai.itl.parser.inps)))
+
         chatlog = curr_val_ai.itl.parser.inps[:-1]
         new_state = curr_val_ai.state_queue[-1]
 
         curr_game.state = new_state
 
-        new_val_ai = ValAI(curr_val_ai.game, app=curr_val_ai.app, socketio=curr_val_ai.socketio, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_game.id), chatlog=chatlog, gameid=curr_game.id, premove_sender=curr_game.premove_sender, silenced=False)
-        print('new_val_ai is %s' % (new_val_ai,))
-        print('game is %s' % (curr_game,))
-        print('game policy is %s' % (curr_game.npc_policies['StayAI_1'],))
+        new_val_ai = ValAI(curr_val_ai.game, app=curr_val_ai.app, socketio=curr_val_ai.socketio, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_game.id), chatlog=chatlog, gameid=curr_game.id, premove_sender=curr_game.premove_sender, silenced=True)
+        new_val_ai.itl.parser.inps = curr_val_ai.itl.parser.inps[:-1]
+        new_val_ai.state_queue = curr_val_ai.state_queue[:-1]
         curr_game.npc_policies['StayAI_1'] = new_val_ai
-        print('now game policy is %s' % (curr_game.npc_policies['StayAI_1'],))
 
 @socketio.on('connect')
 def on_connect():
