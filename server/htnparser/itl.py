@@ -245,7 +245,7 @@ class InteractiveTaskLearner:
 						elif i != 0:
 							learned_fmt = learned_fmt + ', '
 						learned_fmt = learned_fmt + '<code>%s</code>'%(learned_names[i],)
-					self.out_fn("OK, from your explanation of how to \"<i>%s</i>\", I've learned how to %s!" % (instruction, learned_fmt))
+					self.parser.out_fn("OK, from your explanation of how to \"<i>%s</i>\", I've learned how to %s!" % (instruction, learned_fmt))
 					
 			else:
 				# Linearize the plan by applying the argument-binding

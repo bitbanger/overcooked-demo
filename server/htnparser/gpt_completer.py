@@ -85,7 +85,8 @@ class GPTCompleter:
 	def get_chat_gpt_completion(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, retries=5, system_intro=None):
 		res = None
 		if self.in_jail_and_now_dead:
-			print('in jail and now dead, but prompt is:')
+			return '#TERMINATED#'
+			# print('in jail and now dead, but prompt is:')
 		print(prompt)
 		for i in range(retries):
 			if i == 0:

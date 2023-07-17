@@ -9,7 +9,7 @@ if __name__ == '__main__':
 else:
 	from .gpt_completer import GPTCompleter
 
-CONFIRM_GPT = False
+CONFIRM_GPT = True
 
 RECLARIFY = 'RECLARIFY'
 GLOBAL_CHOICE_ID = 0
@@ -51,6 +51,8 @@ class ChatParser:
 		self.verb_prompt = self.load_prompt(verb_fn)
 
 		self.in_jail_and_now_dead = False
+
+		self.inps = []
 
 		self.in_stream = in_stream
 		self.raw_out_fn = out_fn
@@ -118,6 +120,11 @@ class ChatParser:
 		with open(log_fn, 'a+') as f:
 			f.write('User: %s\n' % (ret.strip(),))
 
+		if ret != '#TERMINATED#' and ret != 'undo':
+			self.inps.append(ret)
+			print('added %s to rets' % (ret,))
+			self.save_state()
+
 		return ret
 
 	def chat_back(self):
@@ -168,6 +175,8 @@ However, for now, please keep your repsonses short and general. Do not include l
 		done = False
 		for i in range(20):
 			resp = self.gpt.get_chat_gpt_completion(prompt).strip()
+			if self.in_jail_and_now_dead:
+				return '#TERMINATED#'
 			print('segment resp %d. """%s"""' % (i, resp))
 			found_one = False
 			retrying = False
