@@ -29,7 +29,7 @@ PRINT_TERRAIN = False
 PRINT_STATE = False
 
 class ValAI():
-	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None):
+	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None, silenced=False, start_state=None):
 		self.sent_first_msg = False
 		self.just_chatted = False
 		self.state_queue = []
@@ -51,11 +51,13 @@ class ValAI():
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
 		# self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar, put(<arg1>,<arg2>) - a learned action", in_stream=self.in_stream, out_fn=self.out_fn)
-		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender)
+		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced)
 		self.itl.parser.reverse_state = self.reverse_state
 		self.itl.parser.save_state = self.save_state
 
 		self.inp_queue = []
+
+		self.inps = []
 
 		self.have_acted = False
 		self.game = game
@@ -123,7 +125,11 @@ class ValAI():
 		self.state_queue.append(self.state.deepcopy())
 
 	def wait_input(self, prompt=''):
-		return self.itl.wait_input(prompt)
+		inp = self.itl.wait_input(prompt)
+		if inp != '#TERMINATED#' and inp != 'undo':
+			self.inps.append(inp)
+			self.save_state()
+		return inp
 
 	def ai_player_pos(self):
 		return self.state.players[1].position
