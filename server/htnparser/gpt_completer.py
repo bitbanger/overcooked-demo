@@ -8,6 +8,8 @@ import xmlrpc.client
 
 class GPTCompleter:
 	def __init__(self, local_model=None):
+		self.in_jail_and_now_dead = False
+
 		try:
 			os.mkdir('api_cache')
 		except:
@@ -82,7 +84,9 @@ class GPTCompleter:
 
 	def get_chat_gpt_completion(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, retries=5, system_intro=None):
 		res = None
-		# print(prompt)
+		if self.in_jail_and_now_dead:
+			print('in jail and now dead, but prompt is:')
+		print(prompt)
 		for i in range(retries):
 			if i == 0:
 				print('*', end='')
@@ -100,6 +104,9 @@ class GPTCompleter:
 		return res
 
 	def get_chat_gpt_completion_helper(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, system_intro=None):
+		if self.in_jail_and_now_dead:
+			return '#TERMINATED#'
+
 		# prompt_msgs = [x.strip() for x in prompt.split('***') if len(x.strip()) > 0]
 		prompt_msgs = [x.strip() for x in prompt.split('***')]
 		# print(prompt_msgs)
@@ -127,6 +134,7 @@ class GPTCompleter:
 			key = hash(('chat', model_name, prompt, rep_pen, max_length, stop, system_intro))
 			key = int(hashlib.md5(str(('chat', model_name, prompt, rep_pen, max_length, stop, system_intro)).encode('utf-8')).hexdigest(), 16)
 			if key not in self.cache:
+				print('here11')
 				self.cache[key] = openai.ChatCompletion.create(
 					model=model_name,
 					messages=annotated_msgs,
@@ -135,6 +143,7 @@ class GPTCompleter:
 					frequency_penalty=rep_pen,
 					stop=stop,
 				).choices[0].message.content
+				print('here22')
 				with open('api_cache/%d' % key, 'w') as f:
 					f.write(self.cache[key])
 			# print('RESP:')

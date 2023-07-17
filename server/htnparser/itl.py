@@ -185,7 +185,9 @@ class InteractiveTaskLearner:
 	def classify_intent(self, utterance):
 		prompt = self.parser.load_prompt('prompts/chat_intent.txt')
 
+		print('here1')
 		cls = self.parser.gpt.get_chat_gpt_completion(prompt%utterance.strip())
+		print('here2')
 
 		intent = CHAT
 		if "1" in cls:
@@ -215,6 +217,8 @@ class InteractiveTaskLearner:
 				return (REQUEST,)
 
 	def process_instruction(self, instruction, clarify_hook=None, clarify_unknowns=True, only_depth=None):
+		if instruction == '#TERMINATED#':
+			return '#TERMINATED#'
 		# Call the parser with the instruction.
 		# This will convert it into a full task
 		# tree, represented as a list of possibly

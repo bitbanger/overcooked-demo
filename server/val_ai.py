@@ -686,6 +686,8 @@ class ValAI():
 				return Action.STAY, None
 
 			# Intent classification
+			if inp.strip() == '#TERMINATED#':
+				return Action.STAY, None
 			intent_tup = self.itl.classify_intent(inp.strip())
 			intent = intent_tup[0]
 			if intent == CHAT:
@@ -709,6 +711,8 @@ class ValAI():
 				if 'explain how to' in intent_tup[1].lower():
 					expl_req = intent_tup[1].strip()[len('explain how to'):].strip()
 				expl_actions = self.itl.process_instruction(expl_req, clarify_unknowns=False, only_depth=1)
+				if expl_actions == '#TERMINATED#':
+					return Action.STAY, None
 				expl_actions_fmt = ''
 				nga = False
 				for ea in expl_actions:

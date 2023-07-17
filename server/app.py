@@ -5,6 +5,8 @@ import io
 import sys
 import time
 
+from val_ai import ValAI
+
 SESS_ID = 'demo_logs/' + str(int(time.time()*1000000))
 try:
     os.mkdir('demo_logs')
@@ -18,7 +20,8 @@ except:
 # Import and patch the production eventlet server if necessary
 if os.getenv('FLASK_ENV', 'production') == 'production':
     import eventlet
-    eventlet.monkey_patch()
+    # eventlet.monkey_patch()
+    eventlet.monkey_patch(os=True, select=True, thread=True, time=True, socket=False)
 
 # All other imports must come after patch to ensure eventlet compatibility
 import pickle, queue, atexit, json, logging
@@ -134,6 +137,7 @@ def chat_out_fn(msg, game_id=None):
     global chat_buf_lock
     global game_id_to_webmux
     chat_buf_lock.acquire()
+
 
     msg = msg.replace('\n', '<br />')
     msg = msg.replace('\t', '&ensp;')
@@ -591,18 +595,24 @@ def on_message(msg):
     # else:
         # val_ai.in_stream.put(msg['msg'].strip())
 
-		curr_game = get_curr_game(request.sid)
-		curr_val_ai = curr_game.npc_policies['StayAI_1']
+        curr_game = get_curr_game(request.sid)
+        curr_val_ai = curr_game.npc_policies['StayAI_1']
 
-		curr_val_ai.itl.parser.in_jail_and_now_dead = True
-		curr_val_ai.itl.parser.in_stream.put('#TERMINATE#')
+        curr_val_ai.itl.parser.in_jail_and_now_dead = True
+        curr_val_ai.itl.parser.gpt.in_jail_and_now_dead = True
+        curr_val_ai.itl.parser.in_stream.put('#TERMINATE#')
 
-		chatlog = curr_val_ai.inps[:-1]
-		new_state = curr_val_ai.state_queue[-1]
+        chatlog = curr_val_ai.inps[:-1]
+        new_state = curr_val_ai.state_queue[-1]
 
-		curr_game.state = new_state
+        curr_game.state = new_state
 
-		get_curr_game(request.sid).npc_policies['StayAI_1'] = ValAI(self, app=self, socketio=self.socketio, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_id), chatlog=chatlog, gameid=curr_game.id, premove_sender=curr_game.premove_sender, silenced=True)
+        new_val_ai = ValAI(curr_val_ai.game, app=curr_val_ai.app, socketio=curr_val_ai.socketio, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_game.id), chatlog=chatlog, gameid=curr_game.id, premove_sender=curr_game.premove_sender, silenced=True)
+        print('new_val_ai is %s' % (new_val_ai,))
+        print('game is %s' % (curr_game,))
+        print('game policy is %s' % (curr_game.npc_policies['StayAI_1'],))
+        curr_game.npc_policies['StayAI_1'] = new_val_ai
+        print('now game policy is %s' % (curr_game.npc_policies['StayAI_1'],))
 
 @socketio.on('connect')
 def on_connect():

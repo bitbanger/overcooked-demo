@@ -43,6 +43,12 @@ $(function() {
     });
 });
 
+$(function() {
+    $('#undo').click(function() {
+        socket.emit('undo', {});
+    });
+});
+
 
 
 
@@ -69,6 +75,8 @@ socket.on('waiting', function(data) {
     $('#create').attr("disabled", true)
     $('#leave').show();
     $('#leave').attr("disabled", false);
+    $('#undo').show();
+    $('#undo').attr("disabled", false);
     if (!data.in_game) {
         // Begin pinging to join if not currently in a game
         if (window.intervalID === -1) {
@@ -118,6 +126,8 @@ socket.on('start_game', function(data) {
     $('#tutorial').hide();
     $('#leave').show();
     $('#leave').attr("disabled", false)
+    $('#undo').show();
+    $('#undo').attr("disabled", false)
     $('#game-title').show();
     
     if (!window.spectating) {

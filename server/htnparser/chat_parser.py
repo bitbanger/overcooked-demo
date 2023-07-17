@@ -73,6 +73,8 @@ class ChatParser:
 		if self.in_jail_and_now_dead:
 			return '#TERMINATED#'
 
+		print('prompt is %s' % (prompt,))
+
 		if prompt:
 			self.out_fn(prompt)
 
@@ -80,6 +82,7 @@ class ChatParser:
 		if self.chatlog:
 			# print(self.gameid)
 			resp = self.chatlog[0].strip()
+			print('auto-responding %s' % (resp,))
 			# with self.app.app_context():
 				# self.socketio.emit('premovemsg_internal', {'msg': resp.strip(), 'gameid': self.gameid})
 			self.premove_sender(self.gameid, resp.strip(), silenced=self.silenced)
