@@ -9,10 +9,9 @@ if __name__ == '__main__':
 else:
 	from .gpt_completer import GPTCompleter
 
-CONFIRM_GPT = False
+CONFIRM_GPT = True
 
 RECLARIFY = 'RECLARIFY'
-GLOBAL_CHOICE_ID = 0
 ACT_FN = 'prompts/convo2.txt'
 SEG_FN = 'prompts/chat_segmenter.txt'
 NAME_FN = 'prompts/chat_namer.txt'
@@ -36,7 +35,9 @@ def mk_yesno(yes_msg='Yes', no_msg='No'):
 	return CUSTOM_YESNO % (yes_msg.strip(), no_msg.strip())
 
 class ChatParser:
-	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None):
+	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, silenced=False):
+		self.GLOBAL_CHOICE_ID = 0
+		self.silenced = silenced
 		self.premove_sender = premove_sender
 		# self.app = app
 		# self.socketio = socketio
@@ -49,8 +50,12 @@ class ChatParser:
 		self.para_prompt = self.load_prompt(para_fn)
 		self.verb_prompt = self.load_prompt(verb_fn)
 
+		self.in_jail_and_now_dead = False
+
+		self.inps = []
+
 		self.in_stream = in_stream
-		self.out_fn = out_fn
+		self.raw_out_fn = out_fn
 
 		self.life_depends_prompt = self.load_prompt('prompts/life_depends.txt')
 		self.preselect_prompt = self.load_prompt('prompts/preselect_grounder.txt')
@@ -60,7 +65,18 @@ class ChatParser:
 	def yesno(self, prompt, yes_msg='Yes', no_msg='No'):
 		return self.wait_input(prompt+mk_yesno(yes_msg=yes_msg, no_msg=no_msg)).lower().strip() == 'y'
 
+	def out_fn(self, outp):
+		if self.in_jail_and_now_dead or self.silenced:
+			return
+
+		self.raw_out_fn(outp)
+
 	def wait_input(self, prompt=''):
+		if self.in_jail_and_now_dead:
+			return '#TERMINATED#'
+
+		print('prompt is %s' % (prompt,))
+
 		if prompt:
 			self.out_fn(prompt)
 
@@ -68,12 +84,14 @@ class ChatParser:
 		if self.chatlog:
 			# print(self.gameid)
 			resp = self.chatlog[0].strip()
+			print('auto-responding %s' % (resp,))
 			# with self.app.app_context():
 				# self.socketio.emit('premovemsg_internal', {'msg': resp.strip(), 'gameid': self.gameid})
-			self.premove_sender(self.gameid, resp.strip())
+			self.premove_sender(self.gameid, resp.strip(), silenced=self.silenced)
 			self.chatlog = self.chatlog[1:]
 			ret = resp.strip()
 		else:
+			self.silenced = False
 			inp = None
 			while not inp:
 				inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
@@ -83,22 +101,37 @@ class ChatParser:
 			if inp == '#NONE#':
 				inp = ''
 
+			if inp == '#TERMINATE#':
+				inp = ''
+				self.in_jail_and_now_dead = True
+				self.out_fn = lambda x: ''
+				return inp
+
 			ret = inp
 
-		if ret.strip().lower() != 'undo':
+		# if ret.strip().lower() != 'undo' and not self.in_jail_and_now_dead:
+			# self.save_state()
+
+		if not self.silenced:
+			# Select the most recent log folder
+			log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
+
+			log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
+
+			with open(log_fn, 'a+') as f:
+				f.write('User: %s\n' % (ret.strip(),))
+
+		if ret != '#TERMINATED#' and ret != 'undo' and not self.silenced:
+			self.inps.append(ret)
+			print('added %s to rets' % (ret,))
 			self.save_state()
-
-		# Select the most recent log folder
-		log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
-
-		log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
-
-		with open(log_fn, 'a+') as f:
-			f.write('User: %s\n' % (ret.strip(),))
 
 		return ret
 
 	def chat_back(self):
+		if self.in_jail_and_now_dead:
+			return ''
+
 		system_intro = r'''You are a system called VAL: the Verbal Apprentice Learner. You were created by the Teachable Artificial Intelligence Lab (TAIL) at Georgia Tech. You utilize a combination of large language models and symbolic task knowledge to answer questions and perform actions. You are a hybrid neuro-symbolic intelligence.
 
 However, for now, please keep your repsonses short and general. Do not include lots of extra information, and do not make any concrete suggestions. You're just casually chatting!'''
@@ -114,6 +147,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 				msg = ':'.join([x.strip() for x in line.split(':')][1:]).strip()
 				if len(msg) > 0:
 					msgs.append(msg)
+		print(msgs)
 
 		return self.gpt.get_chat_gpt_completion('\n***\n'.join(msgs), system_intro=system_intro)
 
@@ -143,7 +177,9 @@ However, for now, please keep your repsonses short and general. Do not include l
 		done = False
 		for i in range(20):
 			resp = self.gpt.get_chat_gpt_completion(prompt).strip()
-			print('segment resp %d. """%s"""' % (i, resp))
+			if self.in_jail_and_now_dead:
+				return '#TERMINATED#'
+			# print('segment resp %d. """%s"""' % (i, resp))
 			found_one = False
 			retrying = False
 			sorry_count = 0
@@ -222,17 +258,17 @@ However, for now, please keep your repsonses short and general. Do not include l
 	def is_paraphrase(self, action, pred):
 		# return self.gpt.get_chat_gpt_completion(self.para_prompt%('"%s" and %s' % (action, pred)))[0] == 'Y'
 		vp = self.verbalize_pred(pred)
-		print('do %s and %s mean the same thing?' % (action, vp))
+		# print('do %s and %s mean the same thing?' % (action, vp))
 		if action.strip().lower() == vp.strip().lower():
 		    return True
 		ans = self.gpt.get_chat_gpt_completion('Do "%s" and "%s" mean similar things? Please answer either "yes" or "no".' % (action, vp)).lower()
 		# ans = self.gpt.get_chat_gpt_completion('I know an action called "%s", but a non-native English speaker told me to "%s". I know they might not have exactly the same meaning, but could they have meant "%s"? Please respond either "yes" or "no".' % (action, vp, action)).lower()
-		print('ans: %s' % (ans.strip(),))
+		# print('ans: %s' % (ans.strip(),))
 		return 'yes' in ans
 
 	def ground_new_args(self, action, objects):
 		name = self.name_action(action)
-		print('grounding %s with objs %s' % (action, objects))
+		# print('grounding %s with objs %s' % (action, objects))
 		inp = 'OBJECTS: [%s]' % ', '.join([x for x in objects if len(x.strip()) > 0])
 		inp = inp + '\nPHRASE: "%s"' % action
 		inp = inp + '\nVERB: %s' % name.split('(')[0]
@@ -262,9 +298,9 @@ However, for now, please keep your repsonses short and general. Do not include l
 		# prompt = self.life_depends_prompt % (first_ka_str, obj_str, action, second_ka_str)
 
 		prompt = self.life_depends_prompt % (first_ka_str, action, second_ka_str)
-		print(prompt)
+		# print(prompt)
 		resp = self.gpt.get_chat_gpt_completion(prompt)
-		print('choice: %s' % (resp.strip(),))
+		# print('choice: %s' % (resp.strip(),))
 		choice = None
 		for i in range(len(resp)):
 			if resp[i] == '[':
@@ -522,8 +558,6 @@ However, for now, please keep your repsonses short and general. Do not include l
 		return err_msg
 
 	def user_corrects_args(self, kas, grounded, err_msg=''):
-		global GLOBAL_CHOICE_ID
-
 		if err_msg == '':
 			err_msg = self.maybe_arg_error_msg(kas, grounded)
 
@@ -548,8 +582,8 @@ However, for now, please keep your repsonses short and general. Do not include l
 			for s_i in range(len(slots)):
 				if s_i > 0:
 					action_str = action_str + ' <b>,</b> '
-				action_str = action_str + (dropdown_template % GLOBAL_CHOICE_ID)
-				GLOBAL_CHOICE_ID += 1
+				action_str = action_str + (dropdown_template % self.GLOBAL_CHOICE_ID)
+				self.GLOBAL_CHOICE_ID += 1
 			action_str = action_str + ' <b>)</b>'
 			new_args_msg = new_args_msg + action_str
 
@@ -598,7 +632,6 @@ However, for now, please keep your repsonses short and general. Do not include l
 		return new_args
 
 	def user_corrects_action(self, kas, world_state, action_nl):
-		global GLOBAL_CHOICE_ID
 		# We didn't guess the right action.
 
 		# Form a correction request message
@@ -607,10 +640,10 @@ However, for now, please keep your repsonses short and general. Do not include l
 			ka_val = html.escape(ka.split('(')[0])
 			ka_str = html.escape(ka.split(' - ')[0])
 			manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="%s">' % (ka_val,)
-			manual_msg = manual_msg + '\t<label for="choice%d"><code>%s</code></label>' % (GLOBAL_CHOICE_ID, ka_str)
-			GLOBAL_CHOICE_ID += 1
+			manual_msg = manual_msg + '\t<label for="choice%d"><code>%s</code></label>' % (self.GLOBAL_CHOICE_ID, ka_str)
+			self.GLOBAL_CHOICE_ID += 1
 		manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
-		manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
+		manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (self.GLOBAL_CHOICE_ID,)
 
 		# Get the correction
 		manual_action = self.wait_input(manual_msg)
@@ -625,8 +658,6 @@ However, for now, please keep your repsonses short and general. Do not include l
 		return manual_action
 
 	def confirm_no_good_action(self, kas, world_state, action_nl):
-		global GLOBAL_CHOICE_ID
-
 		confirm_msg = "I wasn't able to identify a known action for the command <i>%s</i>." % (action_nl,)
 		confirm_msg = confirm_msg + '\n\nWould you like to review the list of known actions to see if I made a mistake?'
 		confirm_msg = confirm_msg + mk_yesno("Yes", "No; I'll teach you this new action")
@@ -639,10 +670,10 @@ However, for now, please keep your repsonses short and general. Do not include l
 			ka_val = html.escape(ka.split('(')[0])
 			ka_str = html.escape(ka.split(' - ')[0])
 			clar_msg = clar_msg + '\n<input type="radio" class="msger-act-radio" value="%s">' % (ka_val,)
-			clar_msg = clar_msg + '\t<label for="choice%d"><code>%s</code></label>' % (GLOBAL_CHOICE_ID, ka_str)
-			GLOBAL_CHOICE_ID += 1
+			clar_msg = clar_msg + '\t<label for="choice%d"><code>%s</code></label>' % (self.GLOBAL_CHOICE_ID, ka_str)
+			self.GLOBAL_CHOICE_ID += 1
 		clar_msg = clar_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
-		clar_msg = clar_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
+		clar_msg = clar_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (self.GLOBAL_CHOICE_ID,)
 
 		choice = self.wait_input(clar_msg)
 		if choice == 'noGoodAction':
@@ -701,6 +732,15 @@ However, for now, please keep your repsonses short and general. Do not include l
 		# TODO: uhh, should this use learned_or_known? idk
 		return ('known', pred, args)
 
+	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0, clarify_unknowns=True):
+		try:
+			return self.get_actions_helper(known_actions, world_state, text, clarify_hook=clarify_hook, clarify_action=clarify_action, level=level, clarify_unknowns=clarify_unknowns)
+		except:
+			if self.in_jail_and_now_dead:
+				pass
+			else:
+				raise
+
 	# get_actions takes a list of known actions, a world state,
 	# and a textual description of an action sequence, and returns
 	# two things:
@@ -713,9 +753,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 	# a recursive call to itself on new input. When the process concludes,
 	# all new actions will be groundable in terms of actions known prior
 	# to the call.
-	def get_actions(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0, clarify_unknowns=True):
-		global GLOBAL_CHOICE_ID
-
+	def get_actions_helper(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0, clarify_unknowns=True):
 		if clarify_hook is None:
 			clarify_hook = lambda a: self.wait_input('\nWhat do you mean by "%s"?: ' % (a,))
 

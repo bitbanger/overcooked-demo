@@ -30,7 +30,7 @@ class InteractiveTaskLearner:
 	# primitive_actions is passed in as a comma-separated string
 	# of actions in the following format (excluding quotes):
 	# "PRED(<arg1>, <arg2>, ...) - an action description"
-	def __init__(self, primitive_actions, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None):
+	def __init__(self, primitive_actions, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, silenced=False):
 		self.premove_sender = premove_sender
 		# self.app = app
 		# self.socketio = socketio
@@ -50,7 +50,7 @@ class InteractiveTaskLearner:
 		self.out_fn = out_fn
 
 		# self.parser = ModularHTNParser()
-		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn, chatlog=self.chatlog, gameid=gameid, socketio=socketio, app=app, premove_sender=premove_sender)
+		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn, chatlog=self.chatlog, gameid=gameid, socketio=socketio, app=app, premove_sender=premove_sender, silenced=silenced)
 
 		self.primitive_actions = [x.strip() for x in primitive_actions.split(', ')]
 
@@ -185,7 +185,9 @@ class InteractiveTaskLearner:
 	def classify_intent(self, utterance):
 		prompt = self.parser.load_prompt('prompts/chat_intent.txt')
 
+		print('here1')
 		cls = self.parser.gpt.get_chat_gpt_completion(prompt%utterance.strip())
+		print('here2')
 
 		intent = CHAT
 		if "1" in cls:
@@ -215,6 +217,8 @@ class InteractiveTaskLearner:
 				return (REQUEST,)
 
 	def process_instruction(self, instruction, clarify_hook=None, clarify_unknowns=True, only_depth=None):
+		if instruction == '#TERMINATED#':
+			return '#TERMINATED#'
 		# Call the parser with the instruction.
 		# This will convert it into a full task
 		# tree, represented as a list of possibly
@@ -241,7 +245,7 @@ class InteractiveTaskLearner:
 						elif i != 0:
 							learned_fmt = learned_fmt + ', '
 						learned_fmt = learned_fmt + '<code>%s</code>'%(learned_names[i],)
-					self.out_fn("OK, from your explanation of how to \"<i>%s</i>\", I've learned how to %s!" % (instruction, learned_fmt))
+					self.parser.out_fn("OK, from your explanation of how to \"<i>%s</i>\", I've learned how to %s!" % (instruction, learned_fmt))
 					
 			else:
 				# Linearize the plan by applying the argument-binding

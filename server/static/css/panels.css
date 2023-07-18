@@ -10,7 +10,7 @@
 #leftpanel {
 	float: left;
 	width: calc(100% - 764.4px);
-	height: 65vh;
+	height: 85vh;
 }
 
 #rightpanel {

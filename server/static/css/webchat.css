@@ -212,6 +212,24 @@ body {
 .msger-no-btn:hover {
   background: rgb(180, 18, 18);
 }
+.msger-undo-btn {
+  margin-left: 10px;
+  background: rgb(196, 25, 25);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.23s;
+  padding: 10px;
+  border: none;
+  border-radius: 3px;
+  font-size: 1.5em;
+}
+.msger-undo-btn:hover {
+  background: rgb(180, 18, 18);
+}
+.msger-undo-btn:disabled {
+  background: gray;
+}
 
 .msger-maybe-btn {
   margin-left: 10px;

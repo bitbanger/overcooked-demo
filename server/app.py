@@ -5,6 +5,10 @@ import io
 import sys
 import time
 
+from collections import defaultdict
+
+from val_ai import ValAI
+
 SESS_ID = 'demo_logs/' + str(int(time.time()*1000000))
 try:
     os.mkdir('demo_logs')
@@ -18,7 +22,8 @@ except:
 # Import and patch the production eventlet server if necessary
 if os.getenv('FLASK_ENV', 'production') == 'production':
     import eventlet
-    eventlet.monkey_patch()
+    # eventlet.monkey_patch()
+    eventlet.monkey_patch(os=True, select=True, thread=True, time=True, socket=False)
 
 # All other imports must come after patch to ensure eventlet compatibility
 import pickle, queue, atexit, json, logging
@@ -134,6 +139,7 @@ def chat_out_fn(msg, game_id=None):
     global chat_buf_lock
     global game_id_to_webmux
     chat_buf_lock.acquire()
+
 
     msg = msg.replace('\n', '<br />')
     msg = msg.replace('\t', '&ensp;')
@@ -476,9 +482,9 @@ def on_create(data):
         _create_game(user_id, game_name, params, chatlog=chatlog)
     
 
-def send_premove_msg(gameid, msg):
+def send_premove_msg(gameid, msg, silenced=False):
     webmuxid = game_id_to_webmux[gameid]
-    socketio.emit('premovemsg', {'msg': msg, 'id': webmuxid})
+    socketio.emit('premovemsg', {'msg': msg, 'id': webmuxid, 'silenced': silenced})
 
 @socketio.on('join')
 def on_join(data):
@@ -552,10 +558,24 @@ def on_action(data):
 # os.mkfifo('./valdialog')
 # in_queue = multiprocessing.Queue()
 
+webmux_id_to_html_state_queue = defaultdict(list)
+
+@socketio.on('return_chat_html_state')
+def on_html_state(data):
+    global webmux_id_to_html_state_queue
+    webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
+    html_state_queue = webmux_id_to_html_state_queue[webmuxid]
+    html_state_queue.append(data['state'])
+    print('got html state: %s' % (data['state'],))
+
 @socketio.on('message')
 def on_message(msg):
     print('got message:')
     print(msg)
+
+    # ask for a chat window HTML state
+    # webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
+    # socketio.emit('get_chat_html_state',  {'id': webmuxid})
 
     val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
 
@@ -578,6 +598,75 @@ def on_message(msg):
         val_ai.in_stream.put('#NONE#')
     else:
         val_ai.in_stream.put(msg['msg'].strip())
+
+@socketio.on('undo')
+def on_message(msg):
+    global webmux_id_to_html_state_queue
+    webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
+    html_state_queue = webmux_id_to_html_state_queue[webmuxid]
+
+    curr_game = get_curr_game(request.sid)
+
+    if len(html_state_queue) > 0:
+        webmuxid = game_id_to_webmux[curr_game.id]
+        socketio.emit('set_chat_html_state', {'id': webmuxid, 'html': html_state_queue[-1]})
+        webmux_id_to_html_state_queue[webmuxid] = html_state_queue[:-1]
+
+    curr_val_ai = curr_game.npc_policies['StayAI_1']
+
+    curr_val_ai.itl.parser.in_jail_and_now_dead = True
+    curr_val_ai.itl.parser.gpt.in_jail_and_now_dead = True
+    curr_val_ai.itl.parser.in_stream.put('#TERMINATE#')
+
+    # Fix the log
+    msgs = []
+    orig_txt = None
+    with open('%s/%s.txt' % (SESS_ID, curr_game.id), 'r') as f:
+        orig_txt = f.read()
+
+    # leave a separate log of what was undone
+    with open('%s/%s_undo_%s.txt' % (SESS_ID, curr_game.id, str(int(time.time()*1000000))), 'w+') as f:
+        f.write(orig_txt)
+
+    for line in orig_txt.strip().split('\n'):
+        msgs.append(line.strip())
+    msgs.reverse()
+    for i in range(len(msgs)):
+        if 'User:' in msgs[i]:
+            msgs = msgs[i+1:]
+            break
+    msgs.reverse()
+    with open('%s/%s.txt' % (SESS_ID, curr_game.id), 'w') as f:
+        f.write('\n'.join(msgs) + '\n')
+
+    print('%d states, %d inps' % (len(curr_val_ai.state_queue), len(curr_val_ai.itl.parser.inps)))
+
+    chatlog = curr_val_ai.itl.parser.inps[:-1]
+    new_state = curr_val_ai.state_queue[-1]
+    new_custom_state = curr_val_ai.custom_state_queue[-1]
+
+    curr_game.state = new_state
+
+    new_val_ai = ValAI(curr_val_ai.game, app=curr_val_ai.app, socketio=curr_val_ai.socketio, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_game.id), chatlog=chatlog, gameid=curr_game.id, premove_sender=curr_game.premove_sender, silenced=True)
+    new_val_ai.just_chatted = curr_val_ai.just_chatted
+    new_val_ai.sent_first_msg = curr_val_ai.sent_first_msg
+    new_val_ai.itl.parser.inps = curr_val_ai.itl.parser.inps[:-1]
+    new_val_ai.state_queue = curr_val_ai.state_queue[:-1]
+    new_val_ai.custom_state_queue = curr_val_ai.custom_state_queue[:-1]
+    curr_game.npc_policies['StayAI_1'] = new_val_ai
+
+    # Custom state updates
+    if 'global_choice_id' in new_custom_state:
+        new_val_ai.itl.parser.GLOBAL_CHOICE_ID = new_custom_state['global_choice_id']
+
+    # webmuxid = game_id_to_webmux[curr_game.id]
+    # socketio.emit('webchat_undo', {'id': webmuxid, })
+
+    # Re-enable the undo button
+    while new_val_ai.itl.parser.silenced:
+        time.sleep(0.1)
+    print('ready to undo again!')
+    socketio.emit('re_enable_undo', {'id': webmuxid})
 
 @socketio.on('connect')
 def on_connect():

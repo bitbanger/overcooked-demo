@@ -346,7 +346,7 @@ class OvercookedScene extends Phaser.Scene {
             this._drawBonusOrders(hud_data.bonus_orders, sprites, board_height);
         }
         if (typeof(hud_data.time) !== 'undefined') {
-            this._drawTimeLeft(hud_data.time, sprites, board_height);
+            // this._drawTimeLeft(hud_data.time, sprites, board_height);
         }
         if (typeof(hud_data.score) !== 'undefined') {
             this._drawScore(hud_data.score, sprites, board_height);
@@ -372,7 +372,7 @@ class OvercookedScene extends Phaser.Scene {
                     let spriteFrame = this._ingredientsToSpriteFrame(orders[i]['ingredients'], "done");
                     let orderSprite = this.add.sprite(
                         130 + 40 * i,
-                        board_height + 40,
+                        board_height + 60,
                         "soups",
                         spriteFrame
                     );
@@ -385,7 +385,7 @@ class OvercookedScene extends Phaser.Scene {
             else {
                 sprites['bonus_orders'] = {};
                 sprites['bonus_orders']['str'] = this.add.text(
-                    5, board_height + 60, orders_str,
+                    5, board_height + 80, orders_str,
                     {
                         font: "20px Arial",
                         fill: "red",
@@ -444,7 +444,7 @@ class OvercookedScene extends Phaser.Scene {
         }
         else {
             sprites['score'] = this.add.text(
-                5, board_height + 90, score,
+                5, board_height + 120, score,
                 {
                     font: "20px Arial",
                     fill: "red",

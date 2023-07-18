@@ -29,7 +29,8 @@ PRINT_TERRAIN = False
 PRINT_STATE = False
 
 class ValAI():
-	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None):
+	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None, silenced=False, start_state=None):
+		self.silenced = silenced
 		self.sent_first_msg = False
 		self.just_chatted = False
 		self.state_queue = []
@@ -50,8 +51,8 @@ class ValAI():
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveToObject(<object>) - move over to an object,pressSpace() - press the space button to interact with whatever you're facing")
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
-		# self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar, put(<arg1>,<arg2>) - a learned action", in_stream=self.in_stream, out_fn=self.out_fn)
-		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender)
+		# self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar, put(<arg1>,<arg2>) - a learned action", in_stream=self.in_stream, out_fn=self.itl.parser.out_fn)
+		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced)
 		self.itl.parser.reverse_state = self.reverse_state
 		self.itl.parser.save_state = self.save_state
 
@@ -118,12 +119,23 @@ class ValAI():
 			self.game.state = self.state_queue[-1]
 			self.state = self.state_queue[-1]
 			self.state_queue = self.state_queue[:-1]
+			self.custom_state_queue = self.custom_state_queue[:-1]
+
+	def get_custom_state(self):
+		state = dict()
+
+		state['global_choice_id'] = self.itl.parser.GLOBAL_CHOICE_ID
+
+		return state
 
 	def save_state(self):
 		self.state_queue.append(self.state.deepcopy())
+		self.custom_state_queue.append(self.get_custom_state())
+		print('now %d states, %d inps' % (len(self.state_queue), len(self.itl.parser.inps)))
 
 	def wait_input(self, prompt=''):
-		return self.itl.wait_input(prompt)
+		inp = self.itl.wait_input(prompt)
+		return inp
 
 	def ai_player_pos(self):
 		return self.state.players[1].position
@@ -522,8 +534,19 @@ class ValAI():
 				return Action.STAY
 
 	def action(self, state):
+		try:
+			return self.action_helper(state)
+		except Exception as e:
+			if self.itl.parser.in_jail_and_now_dead:
+				# pass
+				return Action.STAY, None
+			else:
+				raise e
+
+	def action_helper(self, state):
 		if len(self.state_queue) == 0:
 			self.state_queue = [self.game.mdp.get_standard_start_state()]
+			self.custom_state_queue = [self.get_custom_state()]
 
 		# print('action called')
 		if self.first_action:
@@ -611,7 +634,7 @@ class ValAI():
 			# self.state_snapshots = []
 		# if len(self.inp_queue) == 0:
 		def clarify_hook2(ua):
-			self.out_fn('What are the steps of "<i>%s</i>"?' % (ua,))
+			self.itl.parser.out_fn('What are the steps of "<i>%s</i>"?' % (ua,))
 			inp = self.wait_input()
 			while True:
 				if inp is None:
@@ -634,17 +657,23 @@ class ValAI():
 				# msg = msg + "\n\nWhat should I do?"
 
 				if not self.sent_first_msg:
-					self.out_fn(msg)
-					self.out_fn('How can I help you today?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
-					self.sent_first_msg = True
-				else:
-					if not self.just_chatted and False:
-						self.out_fn(msg)
-						self.out_fn('Is there anything else I can do for you?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
+					if not self.silenced:
+						self.itl.parser.out_fn(msg)
+						self.itl.parser.out_fn('How can I help you today?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
+						self.sent_first_msg = True
 					else:
-						self.just_chatted = False
-				# self.out_fn('What should I do?')
-				# self.out_fn('User: ', end='')
+						self.silenced = False
+				else:
+					if not self.silenced:
+						if not self.just_chatted and False:
+							self.itl.parser.out_fn(msg)
+							self.itl.parser.out_fn('Is there anything else I can do for you?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
+						else:
+							self.just_chatted = False
+					else:
+						self.silenced = False
+				# self.itl.parser.out_fn('What should I do?')
+				# self.itl.parser.out_fn('User: ', end='')
 				self.need_inp = False
 			# inp, onp, enp = select.select([sys.stdin], [], [], 5)
 			# if inp:
@@ -675,26 +704,30 @@ class ValAI():
 					self.game.state = self.state_queue[-1]
 					self.state = self.state_queue[-1]
 					self.state_queue = self.state_queue[:-1]
+					self.custom_state_queue = self.state_queue[:-1]
 					print('state queue length is now %d' % (len(self.state_queue),))
 					self.game.start_time = time()
 				return Action.STAY, None
 
 			# Intent classification
+			if inp.strip() == '#TERMINATED#':
+				return Action.STAY, None
 			intent_tup = self.itl.classify_intent(inp.strip())
 			intent = intent_tup[0]
 			if intent == CHAT:
-				# print('chat')
-				# self.out_fn("chatting back!")
-				self.out_fn(self.itl.parser.chat_back())
-				self.just_chatted = True
+				if not self.itl.parser.silenced:
+					# print('chat')
+					# self.itl.parser.out_fn("chatting back!")
+					self.itl.parser.out_fn(self.itl.parser.chat_back())
+					self.just_chatted = True
 				return Action.STAY, None
 			elif intent == REQUEST:
-				# self.out_fn("Sure! Here's how I would do that. Take a look over at the left game panel!")
-				sleep(1)
+				# self.itl.parser.out_fn("Sure! Here's how I would do that. Take a look over at the left game panel!")
+				# sleep(1)
 				print('request')
 			elif intent == INSTRUCTION:
 				print('instructing VAL to perform action %s' % (intent_tup[1],))
-				# self.out_fn("Sure! Here's how I would \"<i>%s</i>\". Take a look over at the left game panel!\n\n<small>By the way, if you'd like me to explain how to do that in words, you can say something like \"please explain how to %s\".</small>" % (intent_tup[1], intent_tup[1]))
+				# self.itl.parser.out_fn("Sure! Here's how I would \"<i>%s</i>\". Take a look over at the left game panel!\n\n<small>By the way, if you'd like me to explain how to do that in words, you can say something like \"please explain how to %s\".</small>" % (intent_tup[1], intent_tup[1]))
 				sleep(1)
 				inp = intent_tup[1]
 			elif intent == EXPLANATION:
@@ -703,6 +736,8 @@ class ValAI():
 				if 'explain how to' in intent_tup[1].lower():
 					expl_req = intent_tup[1].strip()[len('explain how to'):].strip()
 				expl_actions = self.itl.process_instruction(expl_req, clarify_unknowns=False, only_depth=1)
+				if expl_actions == '#TERMINATED#':
+					return Action.STAY, None
 				expl_actions_fmt = ''
 				nga = False
 				for ea in expl_actions:
@@ -724,17 +759,17 @@ class ValAI():
 						print('here2')
 						inp = expl_req
 					else:
-						self.out_fn("OK. Is there anything else I can do for you?")
+						self.itl.parser.out_fn("OK. Is there anything else I can do for you?")
 						return Action.STAY, None
 				else:
 					expl_prompt = self.itl.parser.load_prompt('prompts/chat_explainer.txt')
 					expl = self.itl.parser.gpt.get_chat_gpt_completion(expl_prompt%(expl_actions_fmt.strip(),)).strip()
 					print(expl)
 					print('done explaining')
-					self.out_fn(expl)
+					self.itl.parser.out_fn(expl)
 					# except:
 						# print('error explaining; defaulting to chat')
-						# self.out_fn(self.itl.parser.chat_back())
+						# self.itl.parser.out_fn(self.itl.parser.chat_back())
 					self.need_inp = True
 					return Action.STAY, None
 
@@ -743,7 +778,7 @@ class ValAI():
 				self.inp_queue = peekable(self.itl.process_instruction(inp, clarify_hook=clarify_hook2))
 			except:
 				print('ERROR with inp %s and intent %s' % (inp.strip(), intent))
-				self.out_fn(self.itl.parser.chat_back())
+				self.itl.parser.out_fn(self.itl.parser.chat_back())
 				self.just_chatted = True
 				return Action.STAY, None
 			# self.old_inp_queue = self.inp_queue[:]
@@ -767,6 +802,11 @@ class ValAI():
 
 		inp = inp[1]
 		print('PULLING %s from inp_queue' % (inp,))
+		if self.itl.parser.silenced:
+			print('silenced, so not doing it')
+			return Action.STAY, None
+		if '#TERMINATED#' in inp:
+			return Action.STAY, None
 
 
 		s = None

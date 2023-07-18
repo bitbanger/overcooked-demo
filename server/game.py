@@ -467,12 +467,15 @@ class OvercookedGame(Game):
 
 
     def npc_policy_consumer(self, policy_id):
-        queue = self.npc_state_queues[policy_id]
-        policy = self.npc_policies[policy_id]
+        # queue = self.npc_state_queues[policy_id]
+        # policy = self.npc_policies[policy_id]
         while self._is_active:
+            queue = self.npc_state_queues[policy_id]
+            policy = self.npc_policies[policy_id]
             state = queue.get()
             state = self.state
             # print('GAME publishing state %s' % (state.to_dict()))
+            # print('I am %s, policy_id is %s, policy is %s, asking for action' % (self, policy_id, policy))
             npc_action, _ = policy.action(state)
             # print('got npc_action %s' % (npc_action,))
             super(OvercookedGame, self).enqueue_action(policy_id, npc_action)
