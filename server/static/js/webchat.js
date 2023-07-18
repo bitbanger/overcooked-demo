@@ -38,9 +38,19 @@ socket.on('set_chat_html_state', function(data) {
 		// socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 		console.log('replacing ' + $('.msger-chat').html());
 		console.log('with ' + data['html']);
-		$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
-		$('.msger-chat').scrollTop($('.msger-chat')[0].scrollHeight);
-		msgerChat = get(".msger-chat");
+
+		var tempDom = $('<output>').append($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
+
+		var oldMsgCount = $('.msger-chat').children().size();
+		var newMsgCount = tempDom.children().children().size();
+
+		console.log($('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)));
+		$('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)).fadeOut("slow", function() {
+			$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
+			$('.msger-chat').scrollTop($('.msger-chat')[0].scrollHeight);
+			msgerChat = get(".msger-chat");
+		});
+		// $('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
 	}
 });
 
