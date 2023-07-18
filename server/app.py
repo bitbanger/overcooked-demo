@@ -620,9 +620,16 @@ def on_message(msg):
 
     # Fix the log
     msgs = []
+    orig_txt = None
     with open('%s/%s.txt' % (SESS_ID, curr_game.id), 'r') as f:
-        for line in f.read().strip().split('\n'):
-            msgs.append(line.strip())
+        orig_txt = f.read()
+
+    # leave a separate log of what was undone
+    with open('%s/%s_undo_%s.txt' % (SESS_ID, curr_game.id, str(int(time.time()*1000000))), 'w+') as f:
+        f.write(orig_txt)
+
+    for line in orig_txt.strip().split('\n'):
+        msgs.append(line.strip())
     msgs.reverse()
     for i in range(len(msgs)):
         if 'User:' in msgs[i]:
