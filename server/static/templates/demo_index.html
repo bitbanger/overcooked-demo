@@ -30,10 +30,40 @@
   <body>
 
 <div id="page">
+<div id="toppanel" class="toppanel">
 
-<div id="toppanel">
-        <button id="undo" class="msger-undo-btn" style="display:none;" onClick="this.disabled=true;">&#10226;<br />Undo</button>
+<h3>What is VAL?</h3>
+
+<p>VAL is an intelligent, <strong>bidirectional</strong> tutoring system. Those directions are <strong>learning tasks from an expert</strong>, and <strong>teaching tasks to a student</strong>. VAL helps scale up tutoring by learning something from you once, and then explaining it to many students.</p>
+
+<p>VAL combines <strong>ChatGPT</strong> with <strong>explainable AI</strong> to produce general, correct explanations without hallucinating.</p>
+
+<h3>VAL can...</h3>
+
+<div style="display: flex; flex-direction: row;">
+<div style="display: flex; flex-direction: column; margin-left: 10px; margin-right: 10px;">
+<h3>🙋 learn from you</h3>
+<div class="expanel">
+"I want to teach you to cook an onion."
 </div>
+</div>
+<div style="display: flex; flex-direction: column; margin-left: 10px; margin-right: 10px;">
+<h3>💬 explain back</h3>
+<div class="expanel">
+"How do I put an onion in the pot?"
+</div>
+</div>
+<div style="display: flex; flex-direction: column; margin-left: 10px; margin-right: 10px;">
+<h3>💁 demonstrate</h3>
+<div class="expanel">
+"Can you show me how to get a tomato?"
+</div>
+</div>
+</div>
+
+</div>
+
+<br />
 
 <div id="rightpanel">
     <h4 id="instructions" class="text-center"><a href="./instructions">Instructions</a></h4>
@@ -57,9 +87,10 @@
         <div id="error-exit" style="display:none">Game ended unexpectedly (probably due to another user disconnecting)</div>
     </div>
     <div id="control" class="text-center">
-        <button id="create">Begin</button>
-        <button id="join" style="display:none;">Join Existing Game</button>
+        <button id="create">Create Game</button>
+        <button id="join">Join Existing Game</button>
         <button id="leave" style="display:none;">Leave</button>
+        <button id="undo" style="display:none;" onClick="this.disabled=true;">Undo</button>
     </div>
 
     <noscript>
@@ -71,7 +102,7 @@
 
 </div>
 
-<div id="leftpanel" style="display: none;">
+<div id="leftpanel">
 
 <section class="msger">
   <header class="msger-header">

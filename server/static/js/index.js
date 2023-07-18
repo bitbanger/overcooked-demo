@@ -73,8 +73,9 @@ socket.on('waiting', function(data) {
     $('#join').attr("disabled", true)
     $('#create').hide();
     $('#create').attr("disabled", true)
-    $('#leave').show();
-    $('#leave').attr("disabled", false);
+    // $('#leave').show();
+    // $('#leave').attr("disabled", false);
+    $('#leftpanel').show();
     $('#undo').show();
     $('#undo').attr("disabled", false);
     if (!data.in_game) {
@@ -95,8 +96,8 @@ socket.on('creation_failed', function(data) {
     $("#instructions").show();
     $('#tutorial').show();
     $('#waiting').hide();
-    $('#join').show();
-    $('#join').attr("disabled", false);
+    // $('#join').show();
+    // $('#join').attr("disabled", false);
     $('#create').show();
     $('#create').attr("disabled", false);
     $('#overcooked').append(`<h4>Sorry, game creation code failed with error: ${JSON.stringify(err)}</>`);
@@ -124,8 +125,9 @@ socket.on('start_game', function(data) {
     $('#create').attr("disabled", true)
     $("#instructions").hide();
     $('#tutorial').hide();
-    $('#leave').show();
-    $('#leave').attr("disabled", false)
+    // $('#leave').show();
+    // $('#leave').attr("disabled", false)
+    $('#leftpanel').show();
     $('#undo').show();
     $('#undo').attr("disabled", false)
     $('#game-title').show();
@@ -171,8 +173,8 @@ socket.on('end_game', function(data) {
     }
     $('#game-title').hide();
     $('#game-over').show();
-    $("#join").show();
-    $('#join').attr("disabled", false);
+    // $("#join").show();
+    // $('#join').attr("disabled", false);
     $("#create").show();
     $('#create').attr("disabled", false)
     $("#instructions").show();
@@ -189,8 +191,8 @@ socket.on('end_game', function(data) {
 socket.on('end_lobby', function() {
     // Hide lobby
     $('#lobby').hide();
-    $("#join").show();
-    $('#join').attr("disabled", false);
+    // $("#join").show();
+    // $('#join').attr("disabled", false);
     $("#create").show();
     $('#create').attr("disabled", false)
     $("#leave").hide();
