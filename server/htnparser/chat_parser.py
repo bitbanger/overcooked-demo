@@ -223,6 +223,8 @@ However, for now, please keep your repsonses short and general. Do not include l
 		# return self.gpt.get_chat_gpt_completion(self.para_prompt%('"%s" and %s' % (action, pred)))[0] == 'Y'
 		vp = self.verbalize_pred(pred)
 		print('do %s and %s mean the same thing?' % (action, vp))
+		if action.strip().lower() == vp.strip().lower():
+		    return True
 		ans = self.gpt.get_chat_gpt_completion('Do "%s" and "%s" mean similar things? Please answer either "yes" or "no".' % (action, vp)).lower()
 		# ans = self.gpt.get_chat_gpt_completion('I know an action called "%s", but a non-native English speaker told me to "%s". I know they might not have exactly the same meaning, but could they have meant "%s"? Please respond either "yes" or "no".' % (action, vp, action)).lower()
 		print('ans: %s' % (ans.strip(),))
@@ -704,7 +706,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 	# two things:
 	# 1. a corresponding sequence of valid actions to execute in the world
 	# 2. a dictionary tree defining all "new" actions (i.e., those not in
-	#    the input known_actions) as sequences of either new or known actions
+	#	the input known_actions) as sequences of either new or known actions
 	# The idea is that get_actions will identify known actions when
 	# appropriate, or decide to introduce a new action otherwise,
 	# which it then seeks a natural language definition for by making

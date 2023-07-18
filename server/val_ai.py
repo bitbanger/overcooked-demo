@@ -689,12 +689,12 @@ class ValAI():
 				self.just_chatted = True
 				return Action.STAY, None
 			elif intent == REQUEST:
-				self.out_fn("Sure! Here's how I would do that. Take a look over at the left game panel!")
+				# self.out_fn("Sure! Here's how I would do that. Take a look over at the left game panel!")
 				sleep(1)
 				print('request')
 			elif intent == INSTRUCTION:
 				print('instructing VAL to perform action %s' % (intent_tup[1],))
-				self.out_fn("Sure! Here's how I would \"<i>%s</i>\". Take a look over at the left game panel!\n\n<small>By the way, if you'd like me to explain how to do that in words, you can say something like \"please explain how to %s\".</small>" % (intent_tup[1], intent_tup[1]))
+				# self.out_fn("Sure! Here's how I would \"<i>%s</i>\". Take a look over at the left game panel!\n\n<small>By the way, if you'd like me to explain how to do that in words, you can say something like \"please explain how to %s\".</small>" % (intent_tup[1], intent_tup[1]))
 				sleep(1)
 				inp = intent_tup[1]
 			elif intent == EXPLANATION:
