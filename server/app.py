@@ -636,6 +636,7 @@ def on_message(msg):
 
     chatlog = curr_val_ai.itl.parser.inps[:-1]
     new_state = curr_val_ai.state_queue[-1]
+    new_custom_state = curr_val_ai.custom_state_queue[-1]
 
     curr_game.state = new_state
 
@@ -644,10 +645,21 @@ def on_message(msg):
     new_val_ai.sent_first_msg = curr_val_ai.sent_first_msg
     new_val_ai.itl.parser.inps = curr_val_ai.itl.parser.inps[:-1]
     new_val_ai.state_queue = curr_val_ai.state_queue[:-1]
+    new_val_ai.custom_state_queue = curr_val_ai.custom_state_queue[:-1]
     curr_game.npc_policies['StayAI_1'] = new_val_ai
+
+    # Custom state updates
+    if 'global_choice_id' in new_custom_state:
+        new_val_ai.itl.parser.GLOBAL_CHOICE_ID = new_custom_state['global_choice_id']
 
     # webmuxid = game_id_to_webmux[curr_game.id]
     # socketio.emit('webchat_undo', {'id': webmuxid, })
+
+    # Re-enable the undo button
+    while new_val_ai.itl.parser.silenced:
+        time.sleep(0.1)
+    print('ready to undo again!')
+    socketio.emit('re_enable_undo', {'id': webmuxid})
 
 @socketio.on('connect')
 def on_connect():

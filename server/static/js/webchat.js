@@ -199,7 +199,15 @@ socket.on('premovemsg', function(data) {
     console.log('got premove');
 	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
 	if (data['id'] == webmuxid && !data['silenced']) {
+		socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 		appendMessage(PERSON_NAME, PERSON_IMG, "right", data['msg']);
+	}
+});
+
+socket.on('re_enable_undo', function(data) {
+	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	if (data['id'] == webmuxid) {
+		$('#undo').prop('disabled', false);
 	}
 });
 

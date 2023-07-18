@@ -119,9 +119,18 @@ class ValAI():
 			self.game.state = self.state_queue[-1]
 			self.state = self.state_queue[-1]
 			self.state_queue = self.state_queue[:-1]
+			self.custom_state_queue = self.custom_state_queue[:-1]
+
+	def get_custom_state(self):
+		state = dict()
+
+		state['global_choice_id'] = self.itl.parser.GLOBAL_CHOICE_ID
+
+		return state
 
 	def save_state(self):
 		self.state_queue.append(self.state.deepcopy())
+		self.custom_state_queue.append(self.get_custom_state())
 		print('now %d states, %d inps' % (len(self.state_queue), len(self.itl.parser.inps)))
 
 	def wait_input(self, prompt=''):
@@ -537,6 +546,7 @@ class ValAI():
 	def action_helper(self, state):
 		if len(self.state_queue) == 0:
 			self.state_queue = [self.game.mdp.get_standard_start_state()]
+			self.custom_state_queue = [self.get_custom_state()]
 
 		# print('action called')
 		if self.first_action:
@@ -694,6 +704,7 @@ class ValAI():
 					self.game.state = self.state_queue[-1]
 					self.state = self.state_queue[-1]
 					self.state_queue = self.state_queue[:-1]
+					self.custom_state_queue = self.state_queue[:-1]
 					print('state queue length is now %d' % (len(self.state_queue),))
 					self.game.start_time = time()
 				return Action.STAY, None
@@ -711,8 +722,8 @@ class ValAI():
 					self.just_chatted = True
 				return Action.STAY, None
 			elif intent == REQUEST:
-				self.itl.parser.out_fn("Sure! Here's how I would do that. Take a look over at the left game panel!")
-				sleep(1)
+				# self.itl.parser.out_fn("Sure! Here's how I would do that. Take a look over at the left game panel!")
+				# sleep(1)
 				print('request')
 			elif intent == INSTRUCTION:
 				print('instructing VAL to perform action %s' % (intent_tup[1],))

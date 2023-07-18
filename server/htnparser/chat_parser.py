@@ -12,7 +12,6 @@ else:
 CONFIRM_GPT = True
 
 RECLARIFY = 'RECLARIFY'
-GLOBAL_CHOICE_ID = 0
 ACT_FN = 'prompts/convo2.txt'
 SEG_FN = 'prompts/chat_segmenter.txt'
 NAME_FN = 'prompts/chat_namer.txt'
@@ -37,6 +36,7 @@ def mk_yesno(yes_msg='Yes', no_msg='No'):
 
 class ChatParser:
 	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, silenced=False):
+		self.GLOBAL_CHOICE_ID = 0
 		self.silenced = silenced
 		self.premove_sender = premove_sender
 		# self.app = app
@@ -556,8 +556,6 @@ However, for now, please keep your repsonses short and general. Do not include l
 		return err_msg
 
 	def user_corrects_args(self, kas, grounded, err_msg=''):
-		global GLOBAL_CHOICE_ID
-
 		if err_msg == '':
 			err_msg = self.maybe_arg_error_msg(kas, grounded)
 
@@ -582,8 +580,8 @@ However, for now, please keep your repsonses short and general. Do not include l
 			for s_i in range(len(slots)):
 				if s_i > 0:
 					action_str = action_str + ' <b>,</b> '
-				action_str = action_str + (dropdown_template % GLOBAL_CHOICE_ID)
-				GLOBAL_CHOICE_ID += 1
+				action_str = action_str + (dropdown_template % self.GLOBAL_CHOICE_ID)
+				self.GLOBAL_CHOICE_ID += 1
 			action_str = action_str + ' <b>)</b>'
 			new_args_msg = new_args_msg + action_str
 
@@ -632,7 +630,6 @@ However, for now, please keep your repsonses short and general. Do not include l
 		return new_args
 
 	def user_corrects_action(self, kas, world_state, action_nl):
-		global GLOBAL_CHOICE_ID
 		# We didn't guess the right action.
 
 		# Form a correction request message
@@ -641,10 +638,10 @@ However, for now, please keep your repsonses short and general. Do not include l
 			ka_val = html.escape(ka.split('(')[0])
 			ka_str = html.escape(ka.split(' - ')[0])
 			manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="%s">' % (ka_val,)
-			manual_msg = manual_msg + '\t<label for="choice%d"><code>%s</code></label>' % (GLOBAL_CHOICE_ID, ka_str)
-			GLOBAL_CHOICE_ID += 1
+			manual_msg = manual_msg + '\t<label for="choice%d"><code>%s</code></label>' % (self.GLOBAL_CHOICE_ID, ka_str)
+			self.GLOBAL_CHOICE_ID += 1
 		manual_msg = manual_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
-		manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
+		manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (self.GLOBAL_CHOICE_ID,)
 
 		# Get the correction
 		manual_action = self.wait_input(manual_msg)
@@ -659,8 +656,6 @@ However, for now, please keep your repsonses short and general. Do not include l
 		return manual_action
 
 	def confirm_no_good_action(self, kas, world_state, action_nl):
-		global GLOBAL_CHOICE_ID
-
 		confirm_msg = "I wasn't able to identify a known action for the command <i>%s</i>." % (action_nl,)
 		confirm_msg = confirm_msg + '\n\nWould you like to review the list of known actions to see if I made a mistake?'
 		confirm_msg = confirm_msg + mk_yesno("Yes", "No; I'll teach you this new action")
@@ -673,10 +668,10 @@ However, for now, please keep your repsonses short and general. Do not include l
 			ka_val = html.escape(ka.split('(')[0])
 			ka_str = html.escape(ka.split(' - ')[0])
 			clar_msg = clar_msg + '\n<input type="radio" class="msger-act-radio" value="%s">' % (ka_val,)
-			clar_msg = clar_msg + '\t<label for="choice%d"><code>%s</code></label>' % (GLOBAL_CHOICE_ID, ka_str)
-			GLOBAL_CHOICE_ID += 1
+			clar_msg = clar_msg + '\t<label for="choice%d"><code>%s</code></label>' % (self.GLOBAL_CHOICE_ID, ka_str)
+			self.GLOBAL_CHOICE_ID += 1
 		clar_msg = clar_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
-		clar_msg = clar_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (GLOBAL_CHOICE_ID,)
+		clar_msg = clar_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (self.GLOBAL_CHOICE_ID,)
 
 		choice = self.wait_input(clar_msg)
 		if choice == 'noGoodAction':
@@ -757,8 +752,6 @@ However, for now, please keep your repsonses short and general. Do not include l
 	# all new actions will be groundable in terms of actions known prior
 	# to the call.
 	def get_actions_helper(self, known_actions, world_state, text, clarify_hook=None, clarify_action=None, level=0, clarify_unknowns=True):
-		global GLOBAL_CHOICE_ID
-
 		if clarify_hook is None:
 			clarify_hook = lambda a: self.wait_input('\nWhat do you mean by "%s"?: ' % (a,))
 
