@@ -275,6 +275,7 @@ socket.on('enable_chat_input', function(data) {
 		$('#msger-input').prop('disabled', false);
 		$('#msger-input').prop('placeholder', 'Enter your message...');
 		$('#msger-input').prop('style', 'background: #ddd;');
+		$('#msger-input').focus();
 
 		$('#msger-send-btn').prop('disabled', false);
 		$('#msger-send-btn').text('Send');
