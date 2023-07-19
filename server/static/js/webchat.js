@@ -44,17 +44,39 @@ socket.on('set_chat_html_state', function(data) {
 		var oldMsgCount = $('.msger-chat').children().size();
 		var newMsgCount = tempDom.children().children().size();
 
+		console.log('old has ' + oldMsgCount + ', new has ' + newMsgCount);
+
 		console.log($('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)));
-		$('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)).fadeOut("slow", function() {
-			// replace the HTML post-fadeout (this resets button states and stuff)
-			$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
-			// the problem is we need to scroll all the way down
-			$('.msger-chat').scrollTop($('.msger-chat')[0].scrollHeight);
-			// reset the msgerChat reference to the new DOM element for event handling
-			msgerChat = get(".msger-chat");
-			// notify app.py that we can reset the game state now that the fade animation is done
-			socket.emit('undo_post_fadeout', {});
-		});
+
+		var children = 0;
+		if (oldMsgCount > newMsgCount) {
+			$('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)).fadeOut("slow", function() {
+				// replace the HTML post-fadeout (this resets button states and stuff)
+				$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
+				// the problem is we need to scroll all the way down
+				$('.msger-chat').scrollTop($('.msger-chat')[0].scrollHeight);
+				// reset the msgerChat reference to the new DOM element for event handling
+				msgerChat = get(".msger-chat");
+				// notify app.py that we can reset the game state now that the fade animation is done
+				socket.emit('undo_post_fadeout', {});
+			});
+		} else {
+			$('.msger-chat').children().last().fadeTo("slow", 0.0, function() {
+				// replace the HTML post-fadeout (this resets button states and stuff)
+				$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
+				// the problem is we need to scroll all the way down
+				$('.msger-chat').scrollTop($('.msger-chat')[0].scrollHeight);
+				// reset the msgerChat reference to the new DOM element for event handling
+				msgerChat = get(".msger-chat");
+				// notify app.py that we can reset the game state now that the fade animation is done
+				socket.emit('undo_post_fadeout', {});
+			});
+		}
+
+
+		// $('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)).fadeOut("slow", function() {
+		// $('.msger-chat').fadeOut("slow", function() {
+		// $('.msger-chat').fadeTo("slow", 0.0, function() {
 		// $('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
 	}
 });
@@ -127,6 +149,7 @@ $(document).ready(function() {
 
 $(document).ready(function() {
 	document.addEventListener('submit', function(event) {
+		var webmuxid = $(document).children('html').children('head').children('data').attr('value');
 		if(event.target) {
 			if (event.target.className == "argdropdownform") {
 				event.preventDefault();
@@ -137,6 +160,7 @@ $(document).ready(function() {
 				// console.log(str);
 				socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 				socket.emit('message', {'msg': str});
+				socket.emit('disable_chat_input', {'id': webmuxid, 'placeholder': 'Please wait...', 'send_btn_text': 'Send'});
 
 				$(event.target).children('.argdropdown').prop("disabled", true);
 				$(event.target).children('.msger-yes-btn').prop("disabled", true);

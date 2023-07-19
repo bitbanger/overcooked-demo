@@ -35,7 +35,8 @@ def mk_yesno(yes_msg='Yes', no_msg='No'):
 	return CUSTOM_YESNO % (yes_msg.strip(), no_msg.strip())
 
 class ChatParser:
-	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, silenced=False):
+	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, silenced=False):
+		self.toggle_inp = toggle_inp
 		self.GLOBAL_CHOICE_ID = 0
 		self.silenced = silenced
 		self.premove_sender = premove_sender
@@ -63,7 +64,7 @@ class ChatParser:
 		self.gpt = GPTCompleter()
 
 	def yesno(self, prompt, yes_msg='Yes', no_msg='No'):
-		return self.wait_input(prompt+mk_yesno(yes_msg=yes_msg, no_msg=no_msg)).lower().strip() == 'y'
+		return self.wait_input(prompt+mk_yesno(yes_msg=yes_msg, no_msg=no_msg), disable_inp=True).lower().strip() == 'y'
 
 	def out_fn(self, outp):
 		if self.in_jail_and_now_dead or self.silenced:
@@ -71,9 +72,15 @@ class ChatParser:
 
 		self.raw_out_fn(outp)
 
-	def wait_input(self, prompt=''):
+	def wait_input(self, prompt='', disable_inp=False):
 		if self.in_jail_and_now_dead:
 			return '#TERMINATED#'
+
+		if not self.in_jail_and_now_dead:
+			if disable_inp:
+				self.toggle_inp(game_id=self.gameid, disabled=True, placeholder='Please enter your response in the form above...')
+			else:
+				self.toggle_inp(game_id=self.gameid, disabled=False)
 
 		print('prompt is %s' % (prompt,))
 
@@ -94,9 +101,11 @@ class ChatParser:
 			self.silenced = False
 			inp = None
 			while not inp:
-				inp, onp, enp = select.select([self.in_stream._reader], [], [], 5)
+				inp, onp, enp = select.select([self.in_stream._reader], [], [], 1)
 				if inp:
 					inp = self.in_stream.get().strip()
+			if not self.in_jail_and_now_dead:
+				self.toggle_inp(game_id=self.gameid, disabled=True, placeholder='Please wait...')
 
 			if inp == '#NONE#':
 				inp = ''
@@ -134,7 +143,7 @@ class ChatParser:
 
 		system_intro = r'''You are a system called VAL: the Verbal Apprentice Learner. You were created by the Teachable Artificial Intelligence Lab (TAIL) at Georgia Tech. You utilize a combination of large language models and symbolic task knowledge to answer questions and perform actions. You are a hybrid neuro-symbolic intelligence.
 
-However, for now, please keep your repsonses short and general. Do not include lots of extra information, and do not make any concrete suggestions. You're just casually chatting!'''
+However, for now, please keep your responses short and general. Do not include lots of extra information, and do not make any concrete suggestions. You're just casually chatting!'''
 
 		# Select the most recent log folder
 		log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
@@ -241,7 +250,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 		else:
 			msg = msg + YESNO
 
-		return self.wait_input(msg)
+		return self.wait_input(msg, disable_inp=True)
 
 	# name_action takes a single action description of the sort
 	# returned by segment_text and produces a predicate name for
@@ -477,7 +486,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 	def get_steps_for_clarify(self, action, clarify_hook):
 		new_explanation = clarify_hook(action)
 		while True:
-			done = (self.wait_input('Are there any other steps for "%s"?%s' % (action, YESNO)) == 'N')
+			done = (self.wait_input('Are there any other steps for "%s"?%s' % (action, YESNO), disable_inp=True) == 'N')
 			if done:
 				break
 			next_inp = self.wait_input('OK, what comes next?')
@@ -517,14 +526,14 @@ However, for now, please keep your repsonses short and general. Do not include l
 		args_fmt = self.fmt_args(args)
 		arg_prompt = 'OK, and the object%s of the action <code>%s</code> %s %s, right?%s' % ('' if len(args)==1 else 's', action, 'is' if len(args) == 1 else 'are', args_fmt, YESNO)
 
-		return self.wait_input(arg_prompt) == 'Y'
+		return self.wait_input(arg_prompt, disable_inp=True) == 'Y'
 
 	def confirm_guessed_action(self, action_nl, guessed_action):
 		known_prompt = 'I think that "<i>%s</i>" is the action <code>%s</code>.' % (action_nl, guessed_action)
 		known_prompt = known_prompt + '\n\nIs that right?'
 		known_prompt = known_prompt + YESNO
 
-		return self.wait_input(known_prompt) == 'Y'
+		return self.wait_input(known_prompt, disable_inp=True) == 'Y'
 
 	def maybe_arg_error_msg(self, kas, grounded):
 		# First, get the canonical action description from our list and compare arg
@@ -589,7 +598,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 
 			new_args_msg = '<form class="argdropdownform" id="argdropdownform">%s\n\n<input type="submit" class="msger-yes-btn"></form>'  % (new_args_msg,)
 
-			selection = self.wait_input(new_args_msg)
+			selection = self.wait_input(new_args_msg, disable_inp=True)
 			print('got selection %s' % (selection,))
 			parsed_new_args = selection.strip().split('\t')
 			grounded = grounded.split('(')[0] + '(' + ','.join(parsed_new_args) + ')'
@@ -601,7 +610,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 		msg = 'I think these are the objects of "<i>%s</i>":' % (action_nl,)
 		msg = msg + '\n\n<code>%s</code> <b> ( </b> %s <b> ) </b>' % (action_pred, '<b> , </b>'.join([('<code>%s</code>' % x) for x in guessed_args]))
 		msg = msg + '\n\nIs that right?' + YESNO
-		if self.wait_input(msg) == 'Y':
+		if self.wait_input(msg, disable_inp=True) == 'Y':
 			return guessed_args
 
 		# correct
@@ -627,7 +636,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 
 		mmsg = mmsg + '\n\n<input type="submit" class="msger-submit-btn"></input></form>'
 
-		new_args = [x.strip() for x in self.wait_input(mmsg).split('\t') if len(x.strip()) > 0]
+		new_args = [x.strip() for x in self.wait_input(mmsg, disable_inp=True).split('\t') if len(x.strip()) > 0]
 
 		return new_args
 
@@ -646,7 +655,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 		manual_msg = manual_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (self.GLOBAL_CHOICE_ID,)
 
 		# Get the correction
-		manual_action = self.wait_input(manual_msg)
+		manual_action = self.wait_input(manual_msg, disable_inp=True)
 		if manual_action == 'noGoodAction':
 			# The user wants to teach this one manually.
 			return manual_action
@@ -662,7 +671,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 		confirm_msg = confirm_msg + '\n\nWould you like to review the list of known actions to see if I made a mistake?'
 		confirm_msg = confirm_msg + mk_yesno("Yes", "No; I'll teach you this new action")
 
-		if self.wait_input(confirm_msg) == 'N':
+		if self.wait_input(confirm_msg, disable_inp=True) == 'N':
 			return 'noGoodAction'
 
 		clar_msg = 'Which of these is the best choice for "<i>%s</i>"?\n' % (action_nl,)
@@ -675,7 +684,7 @@ However, for now, please keep your repsonses short and general. Do not include l
 		clar_msg = clar_msg + '\n<input type="radio" class="msger-act-radio" value="noGoodAction">'
 		clar_msg = clar_msg + '\t<label for="choice%d"><small>None of these; I want to teach you a new action for this.</small></label>' % (self.GLOBAL_CHOICE_ID,)
 
-		choice = self.wait_input(clar_msg)
+		choice = self.wait_input(clar_msg, disable_inp=True)
 		if choice == 'noGoodAction':
 			return choice
 

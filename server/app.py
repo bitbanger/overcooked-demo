@@ -152,6 +152,15 @@ def chat_out_fn(msg, game_id=None):
     finally:
         chat_buf_lock.release()
 
+def toggle_inp(game_id=None, disabled=False, placeholder='Enter your message...', send_btn_txt='Send'):
+    global game_id_to_webmux
+
+    with app.app_context():
+        if disabled:
+            socketio.emit('disable_chat_input', {'id': game_id_to_webmux[game_id], 'placeholder': placeholder, 'send_btn_txt': send_btn_txt})
+        else:
+            socketio.emit('enable_chat_input', {'id': game_id_to_webmux[game_id]})
+
 #################################
 # Global Coordination Functions #
 #################################
@@ -172,7 +181,7 @@ def try_create_game(game_name, chatlog=[], **kwargs):
         curr_id = FREE_IDS.get(block=False)
         assert FREE_MAP[curr_id], "Current id is already in use"
         game_cls = GAME_NAME_TO_CLS.get(game_name, OvercookedGame)
-        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), socketio=socketio, app=app, premove_sender=send_premove_msg, out_fn=lambda msg: chat_out_fn(msg, game_id=curr_id), chatlog=chatlog, **kwargs)
+        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), socketio=socketio, app=app, premove_sender=send_premove_msg, out_fn=lambda msg: chat_out_fn(msg, game_id=curr_id), chatlog=chatlog, toggle_inp=toggle_inp, **kwargs)
     except queue.Empty:
         err = RuntimeError("Server at max capacity")
         return None, err
@@ -662,6 +671,7 @@ def on_undo_post_fadeout(msg):
     new_val_ai.just_chatted = curr_val_ai.just_chatted
     new_val_ai.sent_first_msg = curr_val_ai.sent_first_msg
     new_val_ai.itl.parser.inps = curr_val_ai.itl.parser.inps[:-1]
+    new_val_ai.itl.parser.toggle_inp = toggle_inp
     new_val_ai.state_queue = curr_val_ai.state_queue[:-1]
     new_val_ai.custom_state_queue = curr_val_ai.custom_state_queue[:-1]
     curr_game.npc_policies['StayAI_1'] = new_val_ai
