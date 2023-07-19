@@ -588,7 +588,7 @@ def on_message(msg):
         val_ai.in_stream.put(msg['msg'].strip())
 
 @socketio.on('yesno')
-def on_message(msg):
+def on_yesno(msg):
     val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
 
     print('got y/n ans:')
@@ -600,7 +600,7 @@ def on_message(msg):
         val_ai.in_stream.put(msg['msg'].strip())
 
 @socketio.on('undo')
-def on_message(msg):
+def on_undo(msg):
     global webmux_id_to_html_state_queue
     webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
     html_state_queue = webmux_id_to_html_state_queue[webmuxid]
@@ -611,6 +611,14 @@ def on_message(msg):
         webmuxid = game_id_to_webmux[curr_game.id]
         socketio.emit('set_chat_html_state', {'id': webmuxid, 'html': html_state_queue[-1]})
         webmux_id_to_html_state_queue[webmuxid] = html_state_queue[:-1]
+
+@socketio.on('undo_post_fadeout')
+def on_undo_post_fadeout(msg):
+    global webmux_id_to_html_state_queue
+    webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
+    html_state_queue = webmux_id_to_html_state_queue[webmuxid]
+
+    curr_game = get_curr_game(request.sid)
 
     curr_val_ai = curr_game.npc_policies['StayAI_1']
 

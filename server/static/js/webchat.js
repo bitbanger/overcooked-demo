@@ -46,9 +46,14 @@ socket.on('set_chat_html_state', function(data) {
 
 		console.log($('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)));
 		$('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)).fadeOut("slow", function() {
+			// replace the HTML post-fadeout (this resets button states and stuff)
 			$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
+			// the problem is we need to scroll all the way down
 			$('.msger-chat').scrollTop($('.msger-chat')[0].scrollHeight);
+			// reset the msgerChat reference to the new DOM element for event handling
 			msgerChat = get(".msger-chat");
+			// notify app.py that we can reset the game state now that the fade animation is done
+			socket.emit('undo_post_fadeout', {});
 		});
 		// $('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
 	}
