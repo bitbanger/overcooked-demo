@@ -613,8 +613,6 @@ def on_undo(msg):
     global webmux_id_to_html_state_queue
     webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
 
-    socketio.emit('disable_chat_input', {'id': webmuxid, 'placeholder': 'Please wait...', 'send_btn_txt': 'Send'})
-
     html_state_queue = webmux_id_to_html_state_queue[webmuxid]
 
     curr_game = get_curr_game(request.sid)
@@ -622,7 +620,10 @@ def on_undo(msg):
     if len(html_state_queue) > 0:
         webmuxid = game_id_to_webmux[curr_game.id]
         socketio.emit('set_chat_html_state', {'id': webmuxid, 'html': html_state_queue[-1]})
+        socketio.emit('disable_chat_input', {'id': webmuxid, 'placeholder': 'Please wait...', 'send_btn_txt': 'Send'})
         webmux_id_to_html_state_queue[webmuxid] = html_state_queue[:-1]
+    else:
+        socketio.emit('re_enable_undo', {'id': webmuxid})
 
 @socketio.on('undo_post_fadeout')
 def on_undo_post_fadeout(msg):

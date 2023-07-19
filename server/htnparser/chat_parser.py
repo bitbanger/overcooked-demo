@@ -78,7 +78,7 @@ class ChatParser:
 
 		if not self.in_jail_and_now_dead:
 			if disable_inp:
-				self.toggle_inp(game_id=self.gameid, disabled=True, placeholder='Please enter your response in the form above...')
+				self.toggle_inp(game_id=self.gameid, disabled=True, placeholder='Please enter your response in the form above, or click \'Undo\'.')
 			else:
 				self.toggle_inp(game_id=self.gameid, disabled=False)
 
@@ -184,7 +184,7 @@ However, for now, please keep your responses short and general. Do not include l
 		lines = []
 		full_lines = []
 		done = False
-		for i in range(20):
+		for i in range(5):
 			resp = self.gpt.get_chat_gpt_completion(prompt).strip()
 			if self.in_jail_and_now_dead:
 				return '#TERMINATED#'
