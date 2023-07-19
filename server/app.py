@@ -603,6 +603,9 @@ def on_yesno(msg):
 def on_undo(msg):
     global webmux_id_to_html_state_queue
     webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
+
+    socketio.emit('disable_chat_input', {'id': webmuxid, 'placeholder': 'Please wait...', 'send_btn_txt': 'Send'})
+
     html_state_queue = webmux_id_to_html_state_queue[webmuxid]
 
     curr_game = get_curr_game(request.sid)
@@ -674,7 +677,9 @@ def on_undo_post_fadeout(msg):
     while new_val_ai.itl.parser.silenced:
         time.sleep(0.1)
     print('ready to undo again!')
+
     socketio.emit('re_enable_undo', {'id': webmuxid})
+    socketio.emit('enable_chat_input', {'id': webmuxid})
 
 @socketio.on('connect')
 def on_connect():

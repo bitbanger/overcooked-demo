@@ -226,6 +226,32 @@ socket.on('re_enable_undo', function(data) {
 	}
 });
 
+socket.on('disable_chat_input', function(data) {
+	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	if (data['id'] == webmuxid) {
+		$('#msger-input').prop('disabled', true);
+		$('#msger-input').prop('placeholder', data['placeholder']);
+		$('#msger-input').prop('style', 'background: #bbb;');
+
+		$('#msger-send-btn').prop('disabled', true);
+		$('#msger-send-btn').text(data['send_btn_txt']);
+		$('#msger-send-btn').prop('style', 'background: gray;');
+	}
+});
+
+socket.on('enable_chat_input', function(data) {
+	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	if (data['id'] == webmuxid) {
+		$('#msger-input').prop('disabled', false);
+		$('#msger-input').prop('placeholder', 'Enter your message...');
+		$('#msger-input').prop('style', 'background: #ddd;');
+
+		$('#msger-send-btn').prop('disabled', false);
+		$('#msger-send-btn').text('Send');
+		$('#msger-send-btn').removeAttr('style');
+	}
+});
+
 function appendMessage(name, img, side, text) {
   //   Simple solution for small apps
   const msgHTML = `
