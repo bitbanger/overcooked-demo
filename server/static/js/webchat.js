@@ -33,11 +33,12 @@ socket.on('get_chat_html_state', function(data) {
 });
 
 socket.on('set_chat_html_state', function(data) {
+	console.log('in set state');
 	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
 	if (data['id'] == webmuxid) {
 		// socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
-		console.log('replacing ' + $('.msger-chat').html());
-		console.log('with ' + data['html']);
+		// console.log('replacing ' + $('.msger-chat').html());
+		// console.log('with ' + data['html']);
 
 		var tempDom = $('<output>').append($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
 
@@ -48,9 +49,13 @@ socket.on('set_chat_html_state', function(data) {
 
 		console.log($('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)));
 
+		console.log($('.msger-chat').size() + ' msger-chats');
+
 		var children = 0;
 		if (oldMsgCount > newMsgCount) {
-			$('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)).fadeOut("slow", function() {
+			console.log('herejs1');
+			$('.msger-chat').children().slice(-(oldMsgCount-newMsgCount)).fadeOut("slow").promise().done(function() {
+				console.log('herejs1.5');
 				// replace the HTML post-fadeout (this resets button states and stuff)
 				$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
 				// the problem is we need to scroll all the way down
@@ -61,7 +66,8 @@ socket.on('set_chat_html_state', function(data) {
 				socket.emit('undo_post_fadeout', {});
 			});
 		} else {
-			$('.msger-chat').children().last().fadeTo("slow", 0.0, function() {
+			$('.msger-chat').children().last().fadeTo("slow", 0.0).promise().done(function() {
+				console.log('herejs2');
 				// replace the HTML post-fadeout (this resets button states and stuff)
 				$('.msger-chat').replaceWith($.parseHTML('<main class="msger-chat">' + data['html'] + '</main>'));
 				// the problem is we need to scroll all the way down
