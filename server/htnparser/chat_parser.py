@@ -9,7 +9,11 @@ if __name__ == '__main__':
 else:
 	from .gpt_completer import GPTCompleter
 
-CONFIRM_GPT = True
+# OBJS = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+OBJS = ['left', 'right']
+OBJ_STR = '[%s]' % (', '.join(o for o in OBJS),)
+
+CONFIRM_GPT = False
 
 RECLARIFY = 'RECLARIFY'
 ACT_FN = 'prompts/convo2.txt'
@@ -296,7 +300,7 @@ However, for now, please keep your responses short and general. Do not include l
 		# Encode all inputs into the prompt
 		# new_ka_lst = [('[%s] %s' % (chr(ord('a')+i), known_actions[i].split('-')[0].strip())) for i in range(len(known_actions))]
 		new_ka_lst = [('[%s] %s' % (chr(ord('a')+i), known_actions[i].split('(')[0].strip())) for i in range(len(known_actions))]
-		obj_str = '[pot, onion, tomato, dropoff, plate]'
+		obj_str = OBJ_STR
 		first_ka_str = ', '.join(new_ka_lst)
 
 		second_ka_lst = [x.split('(')[0] for x in new_ka_lst]
@@ -330,8 +334,8 @@ However, for now, please keep your responses short and general. Do not include l
 		if '()' in chosen_action:
 			return chosen_action
 
-		obj_str = '[pot, onion, tomato, dropoff, plate]'
-		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+		obj_str = OBJ_STR
+		objs = OBJS
 
 		num_args_str = '%d argument%s' % (num_args, '' if num_args==1 else 's')
 		num_objs_str = '%d object%s' % (num_args, '' if num_args==1 else 's')
@@ -369,7 +373,7 @@ However, for now, please keep your responses short and general. Do not include l
 		print('chose pred %s for "%s"' % (chosen_action_pred, action))
 		print('kas were %s' % (known_actions,))
 
-		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+		objs = OBJS
 
 		if (chosen_action_pred == 'noGoodAction' or chosen_action_pred not in [x.split('(')[0] for x in known_actions]):
 			# Case 1: no ID'd action
@@ -440,7 +444,7 @@ However, for now, please keep your responses short and general. Do not include l
 	def old_ground_action(self, known_actions, world_state, action):
 		# Encode all inputs into the prompt
 		ka_str = ', '.join(known_actions)
-		obj_str = 'objects: [pot, onion, tomato, dropoff, plate] & mental values: []'
+		obj_str = 'objects: %s & mental values: []' % (OBJ_STR,)
 		prompt_inp = '1. %s\n2. %s\n3. "%s"' % (ka_str, obj_str, action)
 		prompt = self.act_prompt % prompt_inp
 
@@ -574,7 +578,7 @@ However, for now, please keep your responses short and general. Do not include l
 			# We didn't get the args right.
 
 			# Start forming a request for arg binding.
-			objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+			objs = OBJS
 
 			(canonical_action, canonical_action_args) = self.get_canonical_action(kas, grounded)
 
@@ -614,7 +618,7 @@ However, for now, please keep your responses short and general. Do not include l
 			return guessed_args
 
 		# correct
-		objs = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+		objs = OBJS
 
 		dropdowns = []
 		for ga in guessed_args:
@@ -890,7 +894,7 @@ However, for now, please keep your responses short and general. Do not include l
 				# e.g., to output put(onion, pot) instead of put(pot, onion).
 				new_pred_and_args = self.ground_new_args(action, subtree_objects)
 				new_pred = new_pred_and_args.split('(')[0]
-				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',') if len(x.strip()) > 0]
+				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',') if len(x.strip()) > 0 and x.strip() != ')' and x.strip() != '(']
 				# new_args = [x for x in new_args if x.strip().lower() in ['pot', 'onion', 'tomato', 'dropoff', 'plate']]
 
 

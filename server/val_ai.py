@@ -54,6 +54,7 @@ class ValAI():
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
 		# self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar, put(<arg1>,<arg2>) - a learned action", in_stream=self.in_stream, out_fn=self.itl.parser.out_fn)
 		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp)
+		# self.itl = InteractiveTaskLearner("slide(<direction>) - move in a certain direction", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp)
 		self.itl.parser.reverse_state = self.reverse_state
 		self.itl.parser.save_state = self.save_state
 
@@ -134,8 +135,8 @@ class ValAI():
 		self.custom_state_queue.append(self.get_custom_state())
 		print('now %d states, %d inps' % (len(self.state_queue), len(self.itl.parser.inps)))
 
-	def wait_input(self, prompt=''):
-		inp = self.itl.wait_input(prompt)
+	def wait_input(self, prompt='', disable_inp=False):
+		inp = self.itl.wait_input(prompt, disable_inp=disable_inp)
 		return inp
 
 	def ai_player_pos(self):

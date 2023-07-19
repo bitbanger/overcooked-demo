@@ -55,8 +55,8 @@ class InteractiveTaskLearner:
 
 		self.primitive_actions = [x.strip() for x in primitive_actions.split(', ')]
 
-	def wait_input(self, prompt=''):
-		return self.parser.wait_input(prompt)
+	def wait_input(self, prompt='', disable_inp=False):
+		return self.parser.wait_input(prompt, disable_inp=disable_inp)
 
 	def known_actions(self):
 		learned_actions = []
