@@ -230,6 +230,24 @@ body {
 .msger-undo-btn:disabled {
   background: gray;
 }
+.msger-survey-btn {
+  margin-left: 10px;
+  background: rgb(210, 189, 0);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.23s;
+  padding: 5px;
+  border: none;
+  border-radius: 3px;
+  font-size: 1em;
+}
+.msger-survey-btn:hover {
+  background: rgb(190, 174, 0);
+}
+.msger-survey-btn:disabled {
+  background: gray;
+}
 
 .msger-maybe-btn {
   margin-left: 10px;

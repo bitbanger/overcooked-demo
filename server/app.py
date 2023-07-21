@@ -324,6 +324,8 @@ def _create_game(user_id, game_name, params={}, chatlog=[]):
     global game_uuid_to_webmux
     game_id_to_webmux[game.id] = sid_to_webmux[user_id]
     game_uuid_to_webmux[game.uuid] = sid_to_webmux[user_id]
+    with app.app_context():
+        socketio.emit('tell_web_game_uuid', {'id': sid_to_webmux[user_id], 'uuid': game.uuid})
 
     spectating = True
     with game.lock:
@@ -423,6 +425,11 @@ def valtutorial1():
 def valtutorial2():
     psiturk = request.args.get('psiturk', False)
     return render_template('valtutorial2.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
+
+@app.route('/consent')
+def consent():
+    psiturk = request.args.get('psiturk', False)
+    return render_template('consent.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
 
 @app.route('/tutorial')
 def tutorial():

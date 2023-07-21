@@ -33,6 +33,8 @@ $(function() {
 			console.log('practice mode');
 			$('#undo').hide();
 			$('#undo').attr("disabled", true);
+			$('#survey').hide();
+			$('#survey').attr("disabled", true);
 			$('#leftpanel').hide();
 		}
     });
@@ -65,6 +67,14 @@ $(function() {
     });
 });
 
+$(function() {
+    $('#survey').click(function() {
+		if (confirm('Are you done teaching VAL? If so, click OK to move on to the survey.')) {
+			window.open('https://gatech.co1.qualtrics.com/jfe/form/SV_39qOsSe91BNmnqu?participantid=' + $('#uuid').attr('value'), '_blank');
+		}
+    });
+});
+
 
 
 
@@ -94,6 +104,8 @@ socket.on('waiting', function(data) {
     $('#leftpanel').show();
     $('#undo').show();
     $('#undo').attr("disabled", false);
+    $('#survey').show();
+    $('#survey').attr("disabled", false);
     if (!data.in_game) {
         // Begin pinging to join if not currently in a game
         if (window.intervalID === -1) {
@@ -146,12 +158,16 @@ socket.on('start_game', function(data) {
     $('#leftpanel').show();
     $('#undo').show();
     $('#undo').attr("disabled", false)
+    $('#survey').show();
+    $('#survey').attr("disabled", false)
     $('#game-title').show();
 	var urlParams = new URLSearchParams(window.location.search);
 	if (urlParams.get('practice') == 'true') {
 		console.log('practice mode');
 		$('#undo').hide();
 		$('#undo').attr("disabled", true);
+		$('#survey').hide();
+		$('#survey').attr("disabled", true);
 		$('#leftpanel').hide();
 		$('#toppanel').append($.parseHTML("<div style='background: white; border-radius: 3px; border: 1px black solid; padding: 5px 5px 5px 5px;'><p>Try to make onion soup with just <strong>one</strong> onion, instead of three. Click <a href='/valtutorial1'><strong>here</strong></a> to review the game basics, or <a href='/valtutorial2'><strong>here</strong></a> to move on once you've finished.</p></div>"));
 	}

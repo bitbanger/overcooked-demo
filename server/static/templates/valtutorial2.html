@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <style>
+      img.center {
+        display: block;
+        margin: 0 auto;
+      }
+      table, td, th {  
+        border: 1px solid #ddd;
+        text-align: left;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th, td {
+        padding: 15px;
+      }
+      tr:nth-child(even) 
+    </style>
+
+    <title>Instructions</title>
+    <link rel="Favicon" href="static/favicon.ico" />
+
+    <script src="static/lib/jquery-min.js" type="text/javascript"> </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <div class="container">
+      <p>
+		Now that you're familiar with the game, this page will talk a bit about VAL. The ultimate goal of this session will be for you to teach VAL to make onion soup in the game, so let's look at how VAL works.
+      </p>
+
+      <br>
+		<h2 class="text-center">VAL Basics</h2>
+      <hr>
+      <br>
+
+<p>
+VAL takes commands in natural language. If you ask VAL to do something it doesn't know how to, it will ask you to explain it. Your explanation might also contain actions VAL doesn't know yet; VAL will ask about those, too!
+</p>
+
+<p>
+VAL starts with a set of "known actions" and allows you to build more complex actions from those. As you can see in the example below, VAL only knows the action "slide", and is taught the action "dance".
+</p>
+
+<div style="text-align: center;">
+<video autoplay loop muted width="320">
+	<source src="static/videos/teachValToDance.webm" />
+</video>
+</div>
+
+<br />
+
+
+<p>
+When you or I play the Overcooked game, we have to use our arrow keys to move one square at a time. VAL starts with "moveTo" as its movement action, and it knows the names of all of the objects in the environment (plates, pots, the dropoff, etc.) Getting an onion, for example, is two actions for VAL: moving to the onions, and then pressing space.
+</p>
+
+<p>
+In the Overcooked setting, your goal is to teach VAL how to cook soup. Although VAL only starts with the actions "moveTo" and "pressSpace", you can still tell VAL to cook the soup right away! Even while explaining an action, don't be afraid to use words and actions that VAL doesn't currently know, because whenever you teach a new one, VAL remembers it so it can use it later.
+</p>
+
+
+		<h2 class="text-center">Study Page</h2>
+      <br>
+			Click <a href="/">here</a> to continue on to the main study session page, where you'll teach VAL to make onion soup.
+
+      <br>
+      <hr>
+      <br>
+    </div>
+  </body>
+</html>

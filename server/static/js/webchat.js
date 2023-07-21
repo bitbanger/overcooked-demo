@@ -19,14 +19,14 @@ const BOT_NAME = "VAL";
 const PERSON_NAME = "You";
 
 socket.on('valmsg', function(data) {
-	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {
 		botResponse(data['msg']);
 	}
 });
 
 socket.on('get_chat_html_state', function(data) {
-	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {
 		socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 	}
@@ -34,7 +34,7 @@ socket.on('get_chat_html_state', function(data) {
 
 socket.on('set_chat_html_state', function(data) {
 	console.log('in set state');
-	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {
 		// socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 		// console.log('replacing ' + $('.msger-chat').html());
@@ -88,9 +88,16 @@ socket.on('set_chat_html_state', function(data) {
 });
 
 socket.on('webchat_undo', function(data) {
-	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {
 		// var num_player_msgs = 
+	}
+});
+
+socket.on('tell_web_game_uuid', function(data) {
+	var webmuxid = $('#webmuxid').attr('value');
+	if (data['id'] == webmuxid) {
+		$(document).children('html').children('head').append('<data id="uuid" value="' + data['uuid'] + '" />');
 	}
 });
 
@@ -98,7 +105,7 @@ $(document).ready(function() {
 	console.log('setting id');
 	var id = Math.floor(Math.random() * 10000000);
 	socket.emit('setwebmuxid', {'id': id});
-	$(document).children('html').children('head').append('<data value="' + id + '" />');
+	$(document).children('html').children('head').append('<data id="webmuxid" value="' + id + '" />');
 });
 
 $(document).ready(function() {
@@ -155,7 +162,7 @@ $(document).ready(function() {
 
 $(document).ready(function() {
 	document.addEventListener('submit', function(event) {
-		var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+		var webmuxid = $('#webmuxid').attr('value');
 		if(event.target) {
 			if (event.target.className == "argdropdownform") {
 				event.preventDefault();
@@ -242,7 +249,7 @@ msgerForm.addEventListener("submit", event => {
 
 socket.on('premovemsg', function(data) {
     console.log('got premove');
-	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid && !data['silenced']) {
 		socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
 		appendMessage(PERSON_NAME, PERSON_IMG, "right", data['msg']);
@@ -250,14 +257,14 @@ socket.on('premovemsg', function(data) {
 });
 
 socket.on('re_enable_undo', function(data) {
-	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {
 		$('#undo').prop('disabled', false);
 	}
 });
 
 socket.on('disable_chat_input', function(data) {
-	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {
 		$('#msger-input').prop('disabled', true);
 		$('#msger-input').prop('placeholder', data['placeholder']);
@@ -270,7 +277,7 @@ socket.on('disable_chat_input', function(data) {
 });
 
 socket.on('enable_chat_input', function(data) {
-	var webmuxid = $(document).children('html').children('head').children('data').attr('value');
+	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {
 		$('#msger-input').prop('disabled', false);
 		$('#msger-input').prop('placeholder', 'Enter your message...');
