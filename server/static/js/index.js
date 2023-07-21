@@ -1,6 +1,9 @@
 // Persistent network connection that will be used to transmit real-time data
 var socket = io();
 
+$(document).ready(function() {
+});
+
 /* * * * * * * * * * * * * * * * 
  * Button click event handlers *
  * * * * * * * * * * * * * * * */
@@ -25,6 +28,13 @@ $(function() {
         $('#chatlogfnbox').attr("disabled", true)
         $("#instructions").hide();
         $('#tutorial').hide();
+		var urlParams = new URLSearchParams(window.location.search);
+		if (urlParams.get('practice') == 'true') {
+			console.log('practice mode');
+			$('#undo').hide();
+			$('#undo').attr("disabled", true);
+			$('#leftpanel').hide();
+		}
     });
 });
 
@@ -34,6 +44,12 @@ $(function() {
         $('#join').attr("disabled", true);
         $('#create').attr("disabled", true);
     });
+	setTimeout(function() {
+		var urlParams = new URLSearchParams(window.location.search);
+		if (urlParams.get('practice') == 'true') {
+			$('#create').trigger('click');
+		}
+	}, 100);
 });
 
 $(function() {
@@ -131,6 +147,14 @@ socket.on('start_game', function(data) {
     $('#undo').show();
     $('#undo').attr("disabled", false)
     $('#game-title').show();
+	var urlParams = new URLSearchParams(window.location.search);
+	if (urlParams.get('practice') == 'true') {
+		console.log('practice mode');
+		$('#undo').hide();
+		$('#undo').attr("disabled", true);
+		$('#leftpanel').hide();
+		$('#toppanel').append($.parseHTML("<div style='background: white; border-radius: 3px; border: 1px black solid; padding: 5px 5px 5px 5px;'><p>Try to make onion soup with just <strong>one</strong> onion, instead of three. Click <a href='/valtutorial1'><strong>here</strong></a> to review the game basics, or <a href='/valtutorial2'><strong>here</strong></a> to move on once you've finished.</p></div>"));
+	}
     
     if (!window.spectating) {
         enable_key_listener();

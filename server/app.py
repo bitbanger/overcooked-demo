@@ -4,6 +4,7 @@ import pipes
 import io
 import sys
 import time
+import uuid
 
 from collections import defaultdict
 
@@ -14,10 +15,10 @@ try:
     os.mkdir('demo_logs')
 except:
     pass
-try:
-    os.mkdir(SESS_ID)
-except:
-    pass
+# try:
+    # os.mkdir(SESS_ID)
+# except:
+    # pass
 
 # Import and patch the production eventlet server if necessary
 if os.getenv('FLASK_ENV', 'production') == 'production':
@@ -133,11 +134,12 @@ handler.setLevel(logging.ERROR)
 app.logger.addHandler(handler)  
 
 game_id_to_webmux = dict()
+game_uuid_to_webmux = dict()
 sid_to_webmux = dict()
 chat_buf_lock = Lock()
-def chat_out_fn(msg, game_id=None):
+def chat_out_fn(msg, game_uuid=None):
     global chat_buf_lock
-    global game_id_to_webmux
+    global game_uuid_to_webmux
     chat_buf_lock.acquire()
 
 
@@ -146,8 +148,10 @@ def chat_out_fn(msg, game_id=None):
 
     try:
         with app.app_context():
-            socketio.emit('valmsg', {'msg': msg, 'id': game_id_to_webmux[game_id]})
-            with open('%s/%s.txt' % (SESS_ID, game_id), 'a+') as f:
+            socketio.emit('valmsg', {'msg': msg, 'id': game_uuid_to_webmux[game_uuid]})
+            # with open('%s/%s.txt' % (SESS_ID, game_id), 'a+') as f:
+            # with open('%s/%s.txt' % (SESS_ID, game_id), 'a+') as f:
+            with open('demo_logs/%s/log.txt' % game_uuid, 'a+') as f:
                 f.write('VAL: %s\n' % (msg.strip(),))
     finally:
         chat_buf_lock.release()
@@ -181,7 +185,12 @@ def try_create_game(game_name, chatlog=[], **kwargs):
         curr_id = FREE_IDS.get(block=False)
         assert FREE_MAP[curr_id], "Current id is already in use"
         game_cls = GAME_NAME_TO_CLS.get(game_name, OvercookedGame)
-        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), socketio=socketio, app=app, premove_sender=send_premove_msg, out_fn=lambda msg: chat_out_fn(msg, game_id=curr_id), chatlog=chatlog, toggle_inp=toggle_inp, **kwargs)
+        game_uuid = str(uuid.uuid4())
+        try:
+            os.mkdir('demo_logs/%s' % game_uuid)
+        except:
+            pass
+        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), socketio=socketio, app=app, premove_sender=send_premove_msg, out_fn=lambda msg: chat_out_fn(msg, game_uuid=game_uuid), chatlog=chatlog, toggle_inp=toggle_inp, uuid=game_uuid, **kwargs)
     except queue.Empty:
         err = RuntimeError("Server at max capacity")
         return None, err
@@ -312,7 +321,9 @@ def _create_game(user_id, game_name, params={}, chatlog=[]):
         return
 
     global game_id_to_webmux
+    global game_uuid_to_webmux
     game_id_to_webmux[game.id] = sid_to_webmux[user_id]
+    game_uuid_to_webmux[game.uuid] = sid_to_webmux[user_id]
 
     spectating = True
     with game.lock:
@@ -402,6 +413,16 @@ def psiturk():
 def instructions():
     psiturk = request.args.get('psiturk', False)
     return render_template('instructions.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
+
+@app.route('/valtutorial1')
+def valtutorial1():
+    psiturk = request.args.get('psiturk', False)
+    return render_template('valtutorial1.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
+
+@app.route('/valtutorial2')
+def valtutorial2():
+    psiturk = request.args.get('psiturk', False)
+    return render_template('valtutorial2.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
 
 @app.route('/tutorial')
 def tutorial():
@@ -642,11 +663,13 @@ def on_undo_post_fadeout(msg):
     # Fix the log
     msgs = []
     orig_txt = None
-    with open('%s/%s.txt' % (SESS_ID, curr_game.id), 'r') as f:
+    # with open('%s/%s.txt' % (SESS_ID, curr_game.id), 'r') as f:
+    with open('demo_logs/%s/log.txt' % curr_game.uuid, 'r') as f:
         orig_txt = f.read()
 
     # leave a separate log of what was undone
-    with open('%s/%s_undo_%s.txt' % (SESS_ID, curr_game.id, str(int(time.time()*1000000))), 'w+') as f:
+    # with open('%s/%s_undo_%s.txt' % (SESS_ID, curr_game.id, str(int(time.time()*1000000))), 'w+') as f:
+    with open('demo_logs/%s/log_undo_%s.txt' % (curr_game.uuid, str(int(time.time()*1000000))), 'w+') as f:
         f.write(orig_txt)
 
     for line in orig_txt.strip().split('\n'):
@@ -657,7 +680,8 @@ def on_undo_post_fadeout(msg):
             msgs = msgs[i+1:]
             break
     msgs.reverse()
-    with open('%s/%s.txt' % (SESS_ID, curr_game.id), 'w') as f:
+    # with open('%s/%s.txt' % (SESS_ID, curr_game.id), 'w') as f:
+    with open('demo_logs/%s/log.txt' % curr_game.uuid, 'w') as f:
         f.write('\n'.join(msgs) + '\n')
 
     print('%d states, %d inps' % (len(curr_val_ai.state_queue), len(curr_val_ai.itl.parser.inps)))
@@ -668,9 +692,13 @@ def on_undo_post_fadeout(msg):
 
     curr_game.state = new_state
 
-    new_val_ai = ValAI(curr_val_ai.game, app=curr_val_ai.app, socketio=curr_val_ai.socketio, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_id=curr_game.id), chatlog=chatlog, gameid=curr_game.id, premove_sender=curr_game.premove_sender, silenced=True)
+    new_val_ai = ValAI(curr_val_ai.game, app=curr_val_ai.app, socketio=curr_val_ai.socketio, in_stream=multiprocessing.Queue(), out_fn=lambda msg: chat_out_fn(msg, game_uuid=curr_game.uuid), chatlog=chatlog, gameid=curr_game.id, premove_sender=curr_game.premove_sender, uuid=curr_val_ai.uuid, silenced=True)
     new_val_ai.just_chatted = curr_val_ai.just_chatted
     new_val_ai.sent_first_msg = curr_val_ai.sent_first_msg
+
+    new_val_ai.itl.uuid = curr_val_ai.uuid
+    new_val_ai.itl.parser.uuid = curr_val_ai.uuid
+
     new_val_ai.itl.parser.inps = curr_val_ai.itl.parser.inps[:-1]
     new_val_ai.itl.parser.toggle_inp = toggle_inp
     new_val_ai.state_queue = curr_val_ai.state_queue[:-1]

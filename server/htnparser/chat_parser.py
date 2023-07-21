@@ -39,7 +39,8 @@ def mk_yesno(yes_msg='Yes', no_msg='No'):
 	return CUSTOM_YESNO % (yes_msg.strip(), no_msg.strip())
 
 class ChatParser:
-	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, silenced=False):
+	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, uuid=None, silenced=False):
+		self.uuid = uuid
 		self.toggle_inp = toggle_inp
 		self.GLOBAL_CHOICE_ID = 0
 		self.silenced = silenced
@@ -127,9 +128,10 @@ class ChatParser:
 
 		if not self.silenced:
 			# Select the most recent log folder
-			log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
+			# log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
+			# log_folder = 'demo_logs/%s' % self.uuid
 
-			log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
+			log_fn = os.path.join('demo_logs', self.uuid, 'log.txt')
 
 			with open(log_fn, 'a+') as f:
 				f.write('User: %s\n' % (ret.strip(),))
@@ -150,9 +152,10 @@ class ChatParser:
 However, for now, please keep your responses short and general. Do not include lots of extra information, and do not make any concrete suggestions. You're just casually chatting!'''
 
 		# Select the most recent log folder
-		log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
+		# log_folder = str(max([int(d) for d in os.listdir('demo_logs/') if (os.path.isdir(os.path.join('demo_logs', d)) and d.isnumeric())]))
 
-		log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
+		# log_fn = os.path.join('demo_logs', log_folder, '%s.txt'%self.gameid)
+		log_fn = os.path.join('demo_logs', self.uuid, 'log.txt')
 
 		msgs = []
 		with open(log_fn, 'r') as f:

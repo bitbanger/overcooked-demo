@@ -30,7 +30,8 @@ class InteractiveTaskLearner:
 	# primitive_actions is passed in as a comma-separated string
 	# of actions in the following format (excluding quotes):
 	# "PRED(<arg1>, <arg2>, ...) - an action description"
-	def __init__(self, primitive_actions, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, silenced=False):
+	def __init__(self, primitive_actions, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, uuid=None, silenced=False):
+		self.uuid = uuid
 		self.toggle_inp = toggle_inp
 		self.premove_sender = premove_sender
 		# self.app = app
@@ -51,7 +52,7 @@ class InteractiveTaskLearner:
 		self.out_fn = out_fn
 
 		# self.parser = ModularHTNParser()
-		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn, chatlog=self.chatlog, gameid=gameid, socketio=socketio, app=app, premove_sender=premove_sender, toggle_inp=self.toggle_inp, silenced=silenced)
+		self.parser = ChatParser(in_stream=in_stream, out_fn=out_fn, chatlog=self.chatlog, gameid=gameid, socketio=socketio, app=app, premove_sender=premove_sender, toggle_inp=self.toggle_inp, uuid=self.uuid, silenced=silenced)
 
 		self.primitive_actions = [x.strip() for x in primitive_actions.split(', ')]
 

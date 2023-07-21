@@ -29,7 +29,8 @@ PRINT_TERRAIN = False
 PRINT_STATE = False
 
 class ValAI():
-	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None, silenced=False, start_state=None, toggle_inp=None):
+	def __init__(self, game, socketio=None, app=None, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, premove_sender=None, silenced=False, start_state=None, toggle_inp=None, uuid=None):
+		self.uuid = uuid
 		self.toggle_inp = toggle_inp
 		self.silenced = silenced
 		self.sent_first_msg = False
@@ -53,7 +54,7 @@ class ValAI():
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
 		# self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar, put(<arg1>,<arg2>) - a learned action", in_stream=self.in_stream, out_fn=self.itl.parser.out_fn)
-		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp)
+		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp, uuid=self.uuid)
 		# self.itl = InteractiveTaskLearner("slide(<direction>) - move in a certain direction", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp)
 		self.itl.parser.reverse_state = self.reverse_state
 		self.itl.parser.save_state = self.save_state
