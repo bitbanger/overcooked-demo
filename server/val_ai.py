@@ -228,7 +228,7 @@ class ValAI():
 		final_name = obj_name.lower()
 		if obj_name.lower() not in ground_dict:
 			# print('%s not in ground_dict' % (obj_name.lower()))
-			names = [k for k in obj_name.keys()]
+			names = [k for k in ground_dict.keys()]
 			best_name = min(names, key=lambda k: nltk.edit_distance(k, obj_name.lower()))
 			if nltk.edit_distance(best_name, obj_name.lower()) < 3:
 				final_name = best_name
@@ -668,7 +668,7 @@ class ValAI():
 						self.silenced = False
 				else:
 					if not self.silenced:
-						if not self.just_chatted and False:
+						if not self.just_chatted:
 							self.itl.parser.out_fn(msg)
 							self.itl.parser.out_fn('Is there anything else I can do for you?\n\n<small>You can give me a <b>command</b>, <b>teach me</b> how to do something, or <b>ask me</b> to explain how to do something.</small>')
 						else:

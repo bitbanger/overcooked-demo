@@ -9,11 +9,11 @@ if __name__ == '__main__':
 else:
 	from .gpt_completer import GPTCompleter
 
-# OBJS = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
-OBJS = ['left', 'right']
+OBJS = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
+# OBJS = ['left', 'right']
 OBJ_STR = '[%s]' % (', '.join(o for o in OBJS),)
 
-CONFIRM_GPT = False
+CONFIRM_GPT = True
 
 RECLARIFY = 'RECLARIFY'
 ACT_FN = 'prompts/convo2.txt'
@@ -366,7 +366,14 @@ However, for now, please keep your responses short and general. Do not include l
 		if '"' in resp:
 			resp = resp.replace('"', '').strip()
 
-		return resp
+		resp_pred = resp.split('(')[0]
+		resp_args = [x.strip() for x in resp[:-1].split('(')[1].split(',')]
+
+		resp_args = [ra for ra in resp_args if ra.lower() in OBJS]
+
+		return '%s(%s)' % (resp_pred, ','.join(resp_args))
+
+		# return resp
 
 		# prompt_inp = '1. %s\n2. %s\n3. "%s"' % (ka_str, obj_str, action)
 		# prompt = self.act_prompt % prompt_inp
@@ -563,7 +570,7 @@ However, for now, please keep your responses short and general. Do not include l
 		if not parity_oks_args:
 			# TODO: even if we don't show them, compare the corrected list to whatever we've got here for partial credit
 			if len(grounded_args) == 0:
-				err_msg = "Sorry, but <code>%s</code> has %d object slots, and I'm not sure what to put in them. Could you please clarify which %s to put in those slots?" % (grounded_action, len(grounded_args), obj_maybe_plur)
+				err_msg = "Sorry, but <code>%s</code> has %d object slots, and I'm not sure what to put in them. Could you please clarify which %s to put in those slots?" % (grounded_action, len(canonical_action_args), obj_maybe_plur)
 			elif len(grounded_args) == 1:
 				err_msg = 'Sorry, I thought you wanted me to do this action on just the object %s, but <code>%s</code> has %d object slots. Could you please clarify which %s to put in those slots?' % (grounded_args_fmt, grounded_action, len(canonical_action_args), obj_maybe_plur)
 			else:
