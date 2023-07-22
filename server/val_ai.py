@@ -54,8 +54,11 @@ class ValAI():
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner.load('val_model.pkl')
 		# self.itl = importlib.import_module('htn-parser.itl').InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar")
 		# self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar, put(<arg1>,<arg2>) - a learned action", in_stream=self.in_stream, out_fn=self.itl.parser.out_fn)
-		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp, uuid=self.uuid)
 		# self.itl = InteractiveTaskLearner("slide(<direction>) - move in a certain direction", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp)
+		# self.itl = InteractiveTaskLearner("create_line(<station1>,<station2>) - create a new line that connects station1 and station2, delete_line(<line>) - delete the specified line, insert_station(<line>,<station>,<station1>,<station2>) - add specified station to the specified line between station1 and station2, remove_station(<line>,<station>) - remove the specified station from the given line, append_station(<line>,<station>,<end_station>) - append station to end_station on the specified line", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp, uuid=self.uuid)
+		self.itl = InteractiveTaskLearner("moveTo(<object>) - move to an object, pressSpace() - press the space bar", in_stream=self.in_stream, out_fn=self.out_fn, chatlog=chatlog, gameid=gameid, app=app, socketio=socketio, premove_sender=premove_sender, silenced=silenced, toggle_inp=self.toggle_inp, uuid=self.uuid)
+
+
 		self.itl.parser.reverse_state = self.reverse_state
 		self.itl.parser.save_state = self.save_state
 

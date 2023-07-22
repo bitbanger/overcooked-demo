@@ -11,6 +11,7 @@ else:
 
 OBJS = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
 # OBJS = ['left', 'right']
+# OBJS = ['tan', 'celery', 'allen', 'foggybottom', 'peachtreecenter']
 OBJ_STR = '[%s]' % (', '.join(o for o in OBJS),)
 
 CONFIRM_GPT = True
@@ -369,7 +370,7 @@ However, for now, please keep your responses short and general. Do not include l
 		resp_pred = resp.split('(')[0]
 		resp_args = [x.strip() for x in resp[:-1].split('(')[1].split(',')]
 
-		resp_args = [ra for ra in resp_args if ra.lower() in OBJS]
+		resp_args = [ra.strip().lower() for ra in resp_args if ra.strip().lower() in OBJS]
 
 		return '%s(%s)' % (resp_pred, ','.join(resp_args))
 
@@ -820,7 +821,7 @@ However, for now, please keep your responses short and general. Do not include l
 				break
 			elif choice == 'M':
 				# user wants to add more
-				pre_segs = pre_segs + full_action_segments
+				pre_segs = full_action_segments
 				seg_inp = seg_inp + '. ' + self.wait_input("OK, what comes next?")
 				continue
 			else:
@@ -905,7 +906,7 @@ However, for now, please keep your responses short and general. Do not include l
 				new_pred_and_args = self.ground_new_args(action, subtree_objects)
 				new_pred = new_pred_and_args.split('(')[0]
 				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',') if len(x.strip()) > 0 and x.strip() != ')' and x.strip() != '(']
-				# new_args = [x for x in new_args if x.strip().lower() in ['pot', 'onion', 'tomato', 'dropoff', 'plate']]
+				new_args = [x for x in new_args if x.strip().lower() in OBJS]
 
 
 				if CONFIRM_GPT:

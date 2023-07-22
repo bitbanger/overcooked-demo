@@ -603,7 +603,7 @@ def on_html_state(data):
     webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
     html_state_queue = webmux_id_to_html_state_queue[webmuxid]
     html_state_queue.append(data['state'])
-    print('got html state: %s' % (data['state'],))
+    # print('got html state: %s' % (data['state'],))
 
 @socketio.on('message')
 def on_message(msg):
