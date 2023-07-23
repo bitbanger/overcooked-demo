@@ -720,13 +720,16 @@ def on_undo_post_fadeout(msg):
     # webmuxid = game_id_to_webmux[curr_game.id]
     # socketio.emit('webchat_undo', {'id': webmuxid, })
 
+	# Update the knowledge panel
+    socketio.emit('update_knowledge_panel', {'id': game_uuid_to_webmux[curr_game.uuid]})
+
     # Re-enable the undo button
     while new_val_ai.itl.parser.silenced:
         time.sleep(0.1)
     print('ready to undo again!')
 
     socketio.emit('re_enable_undo', {'id': webmuxid})
-    socketio.emit('enable_chat_input', {'id': webmuxid})
+    # socketio.emit('enable_chat_input', {'id': webmuxid})
 
 @socketio.on('connect')
 def on_connect():
