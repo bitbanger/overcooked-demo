@@ -175,7 +175,7 @@ socket.on('start_game', function(data) {
 		$('#survey').attr("disabled", true);
 		$('#leftpanel').hide();
 		$('.leftpanel').hide();
-		$('#toppanel').append($.parseHTML("<div style='background: white; border-radius: 3px; border: 1px black solid; padding: 5px 5px 5px 5px;'><p>Try to make onion soup with just <strong>one</strong> onion, instead of three. Click <a href='/valtutorial1'><strong>here</strong></a> to review the game basics, or <a href='/valtutorial2'><strong>here</strong></a> to move on once you've finished.</p></div>"));
+		$('#toppanel').append($.parseHTML("<div style='background: white; border-radius: 3px; border: 1px black solid; padding: 5px 5px 5px 5px;'><p>Try to make onion soup with just <strong>one</strong> onion, instead of three. Click <a href='/valtutorial1'><strong>here</strong></a> to review the game basics, or <a href='/valslides'><strong>here</strong></a> to move on once you've finished.</p></div>"));
 	}
     
     if (!window.spectating) {
