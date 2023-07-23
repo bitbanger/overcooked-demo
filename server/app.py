@@ -148,6 +148,7 @@ def chat_out_fn(msg, game_uuid=None):
 
     try:
         with app.app_context():
+            socketio.emit('update_knowledge_panel', {'id': game_uuid_to_webmux[game_uuid]})
             socketio.emit('valmsg', {'msg': msg, 'id': game_uuid_to_webmux[game_uuid]})
             # with open('%s/%s.txt' % (SESS_ID, game_id), 'a+') as f:
             # with open('%s/%s.txt' % (SESS_ID, game_id), 'a+') as f:

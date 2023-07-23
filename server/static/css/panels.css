@@ -9,8 +9,13 @@
 
 #leftpanel {
 	float: left;
-	width: calc(100% - 764.4px);
 	height: 85vh;
+	width: calc(25% - 382.2px;);
+}
+
+.leftpanel {
+	float: left;
+	width: calc(25% - 382.2px;);
 }
 
 #rightpanel {

@@ -51,6 +51,15 @@ body {
   background: #ededed;
 }
 
+#knowledgepanel {
+	padding: 10px;
+	flex-shrink: 0;
+	border-radius: 3px;
+	background: #eee;
+	box-shadow: 0 15px 15px -5px rgba(0, 0, 0, 0.2);
+	border: var(--border);
+}
+
 .msger {
   display: flex;
   flex-flow: column wrap;

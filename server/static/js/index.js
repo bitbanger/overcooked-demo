@@ -36,6 +36,7 @@ $(function() {
 			$('#survey').hide();
 			$('#survey').attr("disabled", true);
 			$('#leftpanel').hide();
+			$('.leftpanel').hide();
 		}
     });
 });
@@ -102,6 +103,8 @@ socket.on('waiting', function(data) {
     // $('#leave').show();
     // $('#leave').attr("disabled", false);
     $('#leftpanel').show();
+    $('.leftpanel').css({display: 'flex'});
+    $('.leftpanel').show();
     $('#undo').show();
     $('#undo').attr("disabled", false);
     $('#survey').show();
@@ -156,6 +159,8 @@ socket.on('start_game', function(data) {
     // $('#leave').show();
     // $('#leave').attr("disabled", false)
     $('#leftpanel').show();
+    $('.leftpanel').css({display: 'flex'});
+    $('.leftpanel').show();
     $('#undo').show();
     $('#undo').attr("disabled", false)
     $('#survey').show();
@@ -169,6 +174,7 @@ socket.on('start_game', function(data) {
 		$('#survey').hide();
 		$('#survey').attr("disabled", true);
 		$('#leftpanel').hide();
+		$('.leftpanel').hide();
 		$('#toppanel').append($.parseHTML("<div style='background: white; border-radius: 3px; border: 1px black solid; padding: 5px 5px 5px 5px;'><p>Try to make onion soup with just <strong>one</strong> onion, instead of three. Click <a href='/valtutorial1'><strong>here</strong></a> to review the game basics, or <a href='/valtutorial2'><strong>here</strong></a> to move on once you've finished.</p></div>"));
 	}
     

@@ -277,6 +277,13 @@ socket.on('disable_chat_input', function(data) {
 	}
 });
 
+socket.on('update_knowledge_panel', function(data) {
+	var webmuxid = $('#webmuxid').attr('value');
+	if (data['id'] == webmuxid) {
+		$("#knowledgepanel").html($(".currentlyknown").last().html());
+	}
+})
+
 socket.on('enable_chat_input', function(data) {
 	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {

@@ -654,11 +654,12 @@ class ValAI():
 			# inp = input('Enter action: ').strip()
 			if self.need_inp:
 				# self.itl.save('val_model.pkl')
-				msg = '<b>Currently known actions:</b>'
+				msg = '<div class="currentlyknown"><b>Currently known actions:</b>'
 				kas = self.itl.known_actions()
 				for i in range(len(kas)):
 					ka = kas[i]
 					msg = msg + '\n\t\t%d. <code>%s</code>' % (i+1, html.escape(ka.split(' - ')[0]))
+				msg = msg + "</div>"
 				msg = msg + "\n\t<i><small>(to teach new actions, just use them in a sentence, and I'll ask for clarification!)</small></i>"
 				# msg = msg + "\n\nWhat should I do?"
 
