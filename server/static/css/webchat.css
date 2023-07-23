@@ -222,7 +222,6 @@ body {
   padding: 10px;
   border: none;
   border-radius: 3px;
-  font-size: 1.5em;
 }
 .msger-undo-btn:hover {
   background: rgb(180, 18, 18);
@@ -240,7 +239,7 @@ body {
   padding: 5px;
   border: none;
   border-radius: 3px;
-  font-size: 1em;
+  font-size: 1.5em;
 }
 .msger-survey-btn:hover {
   background: rgb(190, 174, 0);

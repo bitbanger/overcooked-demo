@@ -31,11 +31,6 @@
 
 <div id="page">
 
-<div id="toppanel">
-        <button id="undo" class="msger-undo-btn" style="display:none;" onClick="this.disabled=true;">&#10226;<br />Undo</button>
-        <button id="survey" class="msger-survey-btn" style="float: right; display:none;">&rarr;<br />Survey</button>
-</div>
-
 <div id="rightpanel">
     <h4 id="instructions" class="text-center"><a href="./instructions">Instructions</a></h4>
     <h4 id="tutorial" class="text-center"><a href="./tutorial">Tutorial</a></h4>
@@ -70,6 +65,8 @@
 	<a href="http://support.google.com/bin/answer.py?hl=en&answer=23852">here</a></p>
     </noscript>
 
+        <button id="survey" class="msger-survey-btn" style="text-align: center; position: relative; left: 50%; transform: translate(-50%,0); display:none;">&rarr;<br />End session</button>
+
 </div>
 
 <div id="leftpanel" style="display: none;">
@@ -89,7 +86,8 @@
 
   <form class="msger-inputarea">
     <input type="text" id="msger-input" class="msger-input" placeholder="Enter your message..." autocomplete="off">
-    <button type="submit" id="msger-send-btn" class="msger-send-btn">Send</button>
+    <button type="submit" id="msger-send-btn" class="msger-send-btn">&#x27a4;<br />Send</button>
+    <button id="undo" class="msger-undo-btn" style="display:none;" onClick="this.disabled=true;">&#10226;<br />Undo</button>
   </form>
 </section>
 <!-- partial -->

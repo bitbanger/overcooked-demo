@@ -271,7 +271,8 @@ socket.on('disable_chat_input', function(data) {
 		$('#msger-input').prop('style', 'background: #bbb;');
 
 		$('#msger-send-btn').prop('disabled', true);
-		$('#msger-send-btn').text(data['send_btn_txt']);
+		$('#msger-send-btn').text('➤\n' + data['send_btn_txt']);
+		$('#msger-send-btn').html($('#msger-send-btn').html().replace(/\n/g,'<br/>'));
 		$('#msger-send-btn').prop('style', 'background: gray;');
 	}
 });
@@ -285,7 +286,8 @@ socket.on('enable_chat_input', function(data) {
 		$('#msger-input').focus();
 
 		$('#msger-send-btn').prop('disabled', false);
-		$('#msger-send-btn').text('Send');
+		$('#msger-send-btn').text('➤\nSend');
+		$('#msger-send-btn').html($('#msger-send-btn').html().replace(/\n/g,'<br/>'));
 		$('#msger-send-btn').removeAttr('style');
 	}
 });
