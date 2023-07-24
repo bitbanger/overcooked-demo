@@ -422,6 +422,11 @@ def valtutorial1():
     psiturk = request.args.get('psiturk', False)
     return render_template('valtutorial1.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
 
+@app.route('/valreviewtutorial1')
+def valreviewtutorial1():
+    psiturk = request.args.get('psiturk', False)
+    return render_template('valreviewtutorial1.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
+
 @app.route('/valtutorial2')
 def valtutorial2():
     psiturk = request.args.get('psiturk', False)
@@ -431,6 +436,11 @@ def valtutorial2():
 def valslides():
     psiturk = request.args.get('psiturk', False)
     return render_template('valslides.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
+
+@app.route('/valreviewslides')
+def valreviewslides():
+    psiturk = request.args.get('psiturk', False)
+    return render_template('valreviewslides.html', layout_conf=LAYOUT_GLOBALS, psiturk=psiturk)
 
 @app.route('/consent')
 def consent():
