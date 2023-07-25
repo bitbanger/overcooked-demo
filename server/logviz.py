@@ -152,21 +152,48 @@ for line in new_new_log:
 
 	new_log.append(line)
 '''
+
+
+# Process modals
+removal_depth = 0
+msg_depths = []
+modal_idcs_and_depths = []
+for i in range(len(log)):
+	line = log[i]
+
+	msg_txt = ': '.join(line.split(': ')[1:]).strip()
+
+	if removal_idcs[i] != -1:
+		if removal_idx_bounds[removal_idcs[i]][0] == i:
+			removal_depth += 1
+	msg_depths.append((i, removal_depth))
+	if removal_idcs[i] != -1:
+		if removal_idx_bounds[removal_idcs[i]][1] == i:
+			removal_depth -= 1
+
+
+	if '"radio' in msg_txt or '<button' in msg_txt or '<select' in msg_txt:
+		modal_idcs_and_depths.append((i, removal_depth))
+
+def html_proc_msg(msg):
+	tag = msg.split(': ')[0].strip()
+	msg = ': '.join(msg.split(': ')[1:])
+	if tag == 'VAL':
+		return VAL_MSG%msg
+	else:
+		return USR_MSG%msg
+
 new_log = []
 removal_depth = 0
 for i in range(len(log)):
 	line = log[i]
+	user_msg = ': '.join(line.split(': ')[1:]).strip()
 
 	if line[0] == '<':
 		new_log.append(line)
 		continue
 
-	tag = line.split(': ')[0].strip()
-	line = ': '.join(line.split(': ')[1:])
-	if tag == 'VAL':
-		line = VAL_MSG%line
-	else:
-		line = USR_MSG%line
+	line = html_proc_msg(line)
 
 	rgb_str = 'rgba(%d, %d, %d, %.1f)'
 
@@ -190,9 +217,48 @@ for i in range(len(log)):
 	if removal_idcs[i] != -1:
 		if removal_idx_bounds[removal_idcs[i]][0] == i:
 			(col0, col1) = cols[removal_depth%len(cols)]
-			new_log.append('<div style="box-shadow: 0 10px 10px -5px rgba(0, 0, 0, 0.2); display: inline-block; position:relative; margin: 10px 10px 10px 10px; padding: 5px 5px 5px 5px;"><div style="position:absolute; top:0px; left:0px; background: repeating-linear-gradient( 45deg, %s, %s 5px, %s 5px, %s 10px ); width: 100%%; height: 100%%; z-index: 2; border-radius: 5px;"><p style="font-weight: bold; margin: 5px 5px 5px 5px;">Removal %d of %d (depth %d)</p></div>' % (col0, col0, col1, col1, removal_idcs[i]+1, len(removal_idx_bounds.keys()), removal_depth))
 			removal_depth += 1
-	new_log.append(line)
+			new_log.append('<div style="box-shadow: 0 10px 10px -5px rgba(0, 0, 0, 0.2); display: inline-block; position:relative; margin: 10px 10px 10px 10px; padding: 5px 5px 5px 5px;"><div style="position:absolute; top:0px; left:0px; background: repeating-linear-gradient( 45deg, %s, %s 5px, %s 5px, %s 10px ); width: 100%%; height: 100%%; z-index: 2; border-radius: 5px;"><p style="font-weight: bold; margin: 5px 5px 5px 5px;">Removal %d of %d (depth %d)</p></div><br />' % (col0, col0, col1, col1, removal_idcs[i]+1, len(removal_idx_bounds.keys()), removal_depth))
+	# for mm in modal_idcs_and_depths:
+		# if mm[0] == i-1 and mm[1] <= removal_depth:
+			# new_log.append('<p>last msg was %s</p>' % (log[i-1]))
+
+	# last_modal = max([x for x in modal_idcs_and_depths if x[1] <= removal_depth], key=lambda x: x[0])
+	no_modal = True
+	if i > 0:
+		last_seen_msg_idx = max([x for x in msg_depths[:i] if x[1] <= removal_depth], key=lambda x: x[0])[0]
+		last_seen_msg = log[last_seen_msg_idx]
+
+		if '"radio' in last_seen_msg or '<button' in last_seen_msg or '<select' in last_seen_msg:
+			# now just process the modal according to the answer
+			if '"radio' in last_seen_msg:
+				# Disable all options
+				last_seen_msg = last_seen_msg.replace('value="', 'disabled="true" value="')
+				# Select and un-disable the right option
+				last_seen_msg = last_seen_msg.replace('disabled="true" value="%s"'%user_msg, 'value="%s" checked="true"'%user_msg)
+			elif user_msg in letter_to_class.keys():
+				cls = letter_to_class[user_msg]
+				# Disable all buttons
+				last_seen_msg = last_seen_msg.replace('button class', 'button style="background: gray;" disabled="true" class')
+				# Un-disable the right button
+				last_seen_msg = last_seen_msg.replace('button style="background: gray;" disabled="true" class="%s"'%cls, 'button class="%s"'%cls)
+			elif len(new_log) > 0 and 'option value' in last_seen_msg and 'disabled' not in last_seen_msg:
+				n = 1
+				for opt in user_msg.split():
+					last_seen_msg = n_repl(last_seen_msg, 'option value="%s"'%opt, 'option value="%s" selected="true"'%opt, n=n)
+					last_seen_msg = n_repl(last_seen_msg, 'select ', 'select disabled="true"', n=n)
+					n += 1
+
+			# add the processed modal to the list
+			new_log.append(html_proc_msg(last_seen_msg))
+			no_modal = False
+
+	if '"radio' in line or '<button' in line or '<select' in line:
+		no_modal = False
+			
+	if no_modal:
+		new_log.append(line)
+
 	if removal_idcs[i] != -1:
 		if removal_idx_bounds[removal_idcs[i]][1] == i:
 			new_log.append('</div>')
