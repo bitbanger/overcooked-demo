@@ -6,6 +6,8 @@ import sys
 # import torch
 import xmlrpc.client
 
+MODEL_NAME = 'gpt-3.5-turbo-0301'
+
 class GPTCompleter:
 	def __init__(self, local_model=None):
 		self.in_jail_and_now_dead = False
@@ -104,7 +106,7 @@ class GPTCompleter:
 
 		return res
 
-	def get_chat_gpt_completion_helper(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, system_intro=None):
+	def get_chat_gpt_completion_helper(self, prompt, temp=0.0, rep_pen=0.0, max_length=256, stop=None, system_intro=None, model_name=MODEL_NAME):
 		if self.in_jail_and_now_dead:
 			return '#TERMINATED#'
 
@@ -129,7 +131,6 @@ class GPTCompleter:
 
 		# model_name = 'gpt-3.5-turbo'
 		# model_name = 'gpt-3.5-turbo-0613'
-		model_name = 'gpt-3.5-turbo-0301'
 
 		if temp == 0:
 			key = hash(('chat', model_name, prompt, rep_pen, max_length, stop, system_intro))
@@ -152,7 +153,7 @@ class GPTCompleter:
 			return self.cache[key]
 		else:
 			res = openai.ChatCompletion.create(
-				model='gpt-3.5-turbo',
+				model=model_name,
 				messages=annotated_msgs,
 				max_tokens=max_length,
 				temperature=temp,
