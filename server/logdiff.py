@@ -83,5 +83,63 @@ def take_diffs(dir_name, verbose=False):
 
 	return indexed_diffs
 
+def merge_diffs(dir_name):
+	files = os.listdir(dir_name.strip())
+	undos = [fn for fn in files if 'undo' in fn and fn[0] != '.']
+	undo_nums = sorted([int(fn[9:-4]) for fn in undos])
+	undo_fns = [os.path.join(dir_name, 'log_undo_%d.txt'%n) for n in undo_nums]
+	# print(undo_fns)
+	undo_fns.append(os.path.join(dir_name, 'log.txt'))
+
+	if len(undo_fns) == 1:
+		return lines(read(undo_fns[0]))
+
+	undo_files = [lines(read(fn)) for fn in undo_fns]
+	final_file = [(-1, line) for line in undo_files[0]]
+
+	r_idx = 0
+	# print(undo_fns[1:])
+	for f_idx in range(len(undo_files[1:])):
+		f = undo_files[1:][f_idx]
+		# print('file has %d lines' % (len(f)))
+
+		# Get the lines in the current file that were removed
+		curr_lines = [l[1] for l in final_file if l[0] == -1]
+		# print('%d curr lines' % (len(curr_lines)))
+		curr_line_real_idcs = [i for i in range(len(final_file)) if final_file[i][0] == -1]
+		diverged_idx = None
+		removed_lines = []
+		removed_this_iter = 0
+		for i in range(len(curr_lines)):
+			if (len(f) <= i or f[i] != curr_lines[i]) and diverged_idx is None:
+				diverged_idx = i
+			if diverged_idx is not None:
+				removed_this_iter += 1
+				removed_lines.append(curr_lines[i])
+				# Set the line as having been removed by this index
+				final_file[curr_line_real_idcs[i]] = (r_idx, curr_lines[i])
+		# print('diff removed %d lines' % removed_this_iter)
+
+		# Add the lines in the new file that came afterward
+		if len(f) > len(curr_lines) and diverged_idx is None:
+			diverged_idx = len(curr_lines)
+		if diverged_idx is not None:
+			# print('adding %d new lines from %s' % (len(f[diverged_idx:]), undo_fns[1:][f_idx]))
+			if len(f[diverged_idx:]) > 0:
+				for new_line in f[diverged_idx:]:
+					final_file.append((-1, new_line))
+				# Increment the removal index, as adding
+				# lines ends any "squashing" of removals
+				r_idx += 1
+
+	return final_file
+
 if __name__ == '__main__':
-	take_diffs(sys.argv[1], verbose=True)
+	# take_diffs(sys.argv[1], verbose=True)
+	for line in merge_diffs(sys.argv[1]):
+		if line[0] != -1:
+			print('%s\tREMOVED BY %d' % (line[1], line[0]))
+			pass
+		else:
+			print('%s' % (line[1],))
+			pass
