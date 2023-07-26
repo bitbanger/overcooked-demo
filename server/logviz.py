@@ -6,6 +6,8 @@ from collections import defaultdict
 
 from logdiff import take_diffs, merge_diffs
 
+from quant import classify_modal, msg_points
+
 ACTUALLY_PROC_MODALS = False
 
 letter_to_class = {
@@ -178,6 +180,11 @@ for i in range(len(log)):
 def html_proc_msg(msg):
 	tag = msg.split(': ')[0].strip()
 	msg = ': '.join(msg.split(': ')[1:])
+
+	# cls = classify_modal(msg)
+	# if cls is not None:
+		# msg = '<div style="display: inline-block; border-radius: 3px; background-color: rgba(255,0,0,0.3); font-weight: bold;">Collected for stats</div><br /><br />%s'%msg
+
 	if tag == 'VAL':
 		return VAL_MSG%msg
 	else:
@@ -186,6 +193,8 @@ def html_proc_msg(msg):
 new_log = []
 removal_depth = 0
 for i in range(len(log)):
+	# msg_points(log, i)
+
 	line = log[i]
 	user_msg = ': '.join(line.split(': ')[1:]).strip()
 
