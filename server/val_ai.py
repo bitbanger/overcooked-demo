@@ -705,6 +705,7 @@ class ValAI():
 				return Action.STAY, None
 
 			if inp.strip().lower() == 'undo':
+				'''
 				if len(self.state_queue) > 0:
 					print('state queue length is %d' % (len(self.state_queue),))
 					# self.state_queue = self.state_queue[:-1]
@@ -714,6 +715,8 @@ class ValAI():
 					self.custom_state_queue = self.state_queue[:-1]
 					print('state queue length is now %d' % (len(self.state_queue),))
 					self.game.start_time = time()
+				return Action.STAY, None
+				'''
 				return Action.STAY, None
 
 			# Intent classification

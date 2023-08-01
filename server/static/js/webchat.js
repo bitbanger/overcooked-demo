@@ -238,10 +238,12 @@ msgerForm.addEventListener("submit", event => {
   const msgText = msgerInput.value;
   if (!msgText) return;
 
-  socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
+  if ( msgText != 'undo' && msgText != 'save' && msgText != 'load' ) {
+    socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
+  }
   socket.emit('message', {'msg': msgText})
 
-  if(msgText != "load") {
+  if(msgText != "load" && msgText != "save" && msgText != "undo") {
     appendMessage(PERSON_NAME, PERSON_IMG, "right", msgText);
   }
   msgerInput.value = "";
@@ -252,7 +254,17 @@ socket.on('premovemsg', function(data) {
 	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid && !data['silenced']) {
 		socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
-		appendMessage(PERSON_NAME, PERSON_IMG, "right", data['msg']);
+		if(msgText != "load" && msgText != "save" && msgText != "undo") {
+			appendMessage(PERSON_NAME, PERSON_IMG, "right", data['msg']);
+		}
+	}
+});
+
+socket.on('premove_undo', function(data) {
+    console.log('got premove undo');
+	var webmuxid = $('#webmuxid').attr('value');
+	if (data['id'] == webmuxid) {
+		socket.emit('undo', {});
 	}
 });
 
@@ -260,6 +272,13 @@ socket.on('re_enable_undo', function(data) {
 	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid) {
 		$('#undo').prop('disabled', false);
+	}
+});
+
+socket.on('disable_undo', function(data) {
+	var webmuxid = $('#webmuxid').attr('value');
+	if (data['id'] == webmuxid) {
+		$('#undo').prop('disabled', true);
 	}
 });
 

@@ -166,6 +166,13 @@ def toggle_inp(game_id=None, disabled=False, placeholder='Enter your message...'
         else:
             socketio.emit('enable_chat_input', {'id': game_id_to_webmux[game_id]})
 
+def premove_undo(game_uuid=None):
+    global game_uuid_to_webmux
+
+    webmuxid = game_uuid_to_webmux[game_uuid]
+    with app.app_context():
+        socketio.emit('premove_undo', {'id': webmuxid})
+
 #################################
 # Global Coordination Functions #
 #################################
@@ -626,19 +633,37 @@ def on_message(msg):
     print('got message:')
     print(msg)
 
-    # ask for a chat window HTML state
-    # webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
-    # socketio.emit('get_chat_html_state',  {'id': webmuxid})
+    if msg['msg'].strip().lower() == 'undo':
+        global webmux_id_to_html_state_queue
+        webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
 
-    val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
+        html_state_queue = webmux_id_to_html_state_queue[webmuxid]
 
-    # in_stream_w.write(msg['msg'].strip() + '\n')
-    if msg['msg'].strip() == '':
-        print('putting none')
-        val_ai.in_stream.put('#NONE#')
+        curr_game = get_curr_game(request.sid)
+
+        if len(html_state_queue) > 0:
+            webmuxid = game_id_to_webmux[curr_game.id]
+            socketio.emit('set_chat_html_state', {'id': webmuxid, 'html': html_state_queue[-1]})
+            socketio.emit('disable_undo', {'id': webmuxid});
+            socketio.emit('disable_chat_input', {'id': webmuxid, 'placeholder': 'Please wait...', 'send_btn_txt': 'Send'})
+            webmux_id_to_html_state_queue[webmuxid] = html_state_queue[:-1]
+        else:
+            socketio.emit('re_enable_undo', {'id': webmuxid})
+
     else:
-        print('putting %s' % (msg['msg'].strip(),))
-        val_ai.in_stream.put(msg['msg'].strip())
+        # ask for a chat window HTML state
+        # webmuxid = game_id_to_webmux[get_curr_game(request.sid).id]
+        # socketio.emit('get_chat_html_state',  {'id': webmuxid})
+
+        val_ai = get_curr_game(request.sid).npc_policies['StayAI_1']
+
+        # in_stream_w.write(msg['msg'].strip() + '\n')
+        if msg['msg'].strip() == '':
+            print('putting none')
+            val_ai.in_stream.put('#NONE#')
+        else:
+            print('putting %s' % (msg['msg'].strip(),))
+            val_ai.in_stream.put(msg['msg'].strip())
 
 @socketio.on('yesno')
 def on_yesno(msg):
@@ -735,7 +760,7 @@ def on_undo_post_fadeout(msg):
     # webmuxid = game_id_to_webmux[curr_game.id]
     # socketio.emit('webchat_undo', {'id': webmuxid, })
 
-	# Update the knowledge panel
+    # Update the knowledge panel
     socketio.emit('update_knowledge_panel', {'id': game_uuid_to_webmux[curr_game.uuid]})
 
     # Re-enable the undo button
