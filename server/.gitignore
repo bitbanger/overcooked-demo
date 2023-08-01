@@ -19,3 +19,4 @@ val_model.pkl
 *.swp
 run.sh
 src/
+session*_demo_logs*
