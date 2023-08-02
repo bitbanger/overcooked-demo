@@ -489,13 +489,13 @@ However, for now, please keep your responses short and general. Do not include l
 
 	def get_subtree_objs(self, action_seq, new_action_defs):
 		lowercase_args = set()
-		args = set()
+		args = list()
 
 		# Add all args from direct children in the subtree
 		for action in action_seq:
 			for arg in action[2]:
 				if arg.lower() not in lowercase_args:
-					args.add(arg)
+					args.append(arg)
 				lowercase_args.add(arg.lower())
 
 			# If the child was learned, recurse
@@ -503,7 +503,7 @@ However, for now, please keep your responses short and general. Do not include l
 				rec_args = self.get_subtree_objs(new_action_defs[action[1].lower()][0], new_action_defs)
 				for rec_arg in rec_args:
 					if rec_arg.lower() not in lowercase_args:
-						args.add(rec_arg)
+						args.append(rec_arg)
 					lowercase_args.add(rec_arg.lower())
 
 		return list(args)
@@ -631,9 +631,6 @@ However, for now, please keep your responses short and general. Do not include l
 		return grounded
 
 	def user_corrects_new_args(self, action_nl, action_pred, guessed_args, known_actions):
-		if len(guessed_args) == 0 and len(self.get_canonical_action_args(known_actions, action_pred+'()')[1]) == 0:
-			return guessed_args
-
 		# ask
 		msg = 'I think these are the objects of "<i>%s</i>":' % (action_nl,)
 		msg = msg + '\n\n<code>%s</code> <b> ( </b> %s <b> ) </b>' % (action_pred, '<b> , </b>'.join([('<code>%s</code>' % x) for x in guessed_args]))
