@@ -535,7 +535,7 @@ def on_create(data):
             else:
                 try:
                     with open(chatlog_filename, 'r') as f:
-                        chatlog = [x.strip() for x in f.read().strip().split('\n') if x.strip()]
+                        chatlog = [x.strip() for x in f.read().strip().split('\n')]
                 except:
                     print('error opening file "%s"' % (chatlog_filename,))
 
