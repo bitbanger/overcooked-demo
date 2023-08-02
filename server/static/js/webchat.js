@@ -250,11 +250,11 @@ msgerForm.addEventListener("submit", event => {
 });
 
 socket.on('premovemsg', function(data) {
-    console.log('got premove');
+    console.log('got premove "' + data['msg'] + '"');
 	var webmuxid = $('#webmuxid').attr('value');
 	if (data['id'] == webmuxid && !data['silenced']) {
 		socket.emit('return_chat_html_state', {'state': $('.msger-chat').html()});
-		if(msgText != "load" && msgText != "save" && msgText != "undo") {
+		if(data['msg'] != "load" && data['msg'] != "save" && data['msg'] != "undo") {
 			appendMessage(PERSON_NAME, PERSON_IMG, "right", data['msg']);
 		}
 	}
