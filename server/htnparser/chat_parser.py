@@ -266,8 +266,18 @@ However, for now, please keep your responses short and general. Do not include l
 	# name_action("put an onion in the pot")
 	# ==
 	# "put"
-	def name_action(self, action):
-		return self.gpt.get_chat_gpt_completion(self.name_prompt%action)
+	def name_action(self, action, known_actions):
+		current_actions = [x.split('(')[0].strip().lower() for x in known_actions]
+
+		i = 2
+		new_signature = self.gpt.get_chat_gpt_completion(self.name_prompt%action)
+		new_name = new_signature.split('(')[0]
+		orig_name = new_name[::]
+		while new_name.lower() in current_actions:
+			new_name = '%s%d' % (orig_name, i)
+			i += 1
+
+		return new_name + '(' + new_signature.split('(')[1]
 
 	def verbalize_pred(self, pred):
 		return self.gpt.get_chat_gpt_completion(self.verb_prompt%pred).strip()
@@ -283,8 +293,8 @@ However, for now, please keep your responses short and general. Do not include l
 		# print('ans: %s' % (ans.strip(),))
 		return 'yes' in ans
 
-	def ground_new_args(self, action, objects):
-		name = self.name_action(action)
+	def ground_new_args(self, action, objects, known_actions):
+		name = self.name_action(action, known_actions)
 		# print('grounding %s with objs %s' % (action, objects))
 		inp = 'OBJECTS: [%s]' % ', '.join([x for x in objects if len(x.strip()) > 0])
 		inp = inp + '\nPHRASE: "%s"' % action
@@ -620,7 +630,10 @@ However, for now, please keep your responses short and general. Do not include l
 
 		return grounded
 
-	def user_corrects_new_args(self, action_nl, action_pred, guessed_args):
+	def user_corrects_new_args(self, action_nl, action_pred, guessed_args, known_actions):
+		if len(guessed_args) == 0 and len(self.get_canonical_action_args(known_actions, action_pred+'()')[1]) == 0:
+			return guessed_args
+
 		# ask
 		msg = 'I think these are the objects of "<i>%s</i>":' % (action_nl,)
 		msg = msg + '\n\n<code>%s</code> <b> ( </b> %s <b> ) </b>' % (action_pred, '<b> , </b>'.join([('<code>%s</code>' % x) for x in guessed_args]))
@@ -850,7 +863,7 @@ However, for now, please keep your responses short and general. Do not include l
 					continue
 
 				# Get a name for it.
-				new_name = self.name_action(action)
+				new_name = self.name_action(action, known_actions)
 
 				(rec_action_seq, rec_new_action_defs) = ([], None)
 				res = RECLARIFY
@@ -903,14 +916,14 @@ However, for now, please keep your responses short and general. Do not include l
 				# about verbalization to make the parameterization roughly
 				# reflect the order of arguments used in invoking language,
 				# e.g., to output put(onion, pot) instead of put(pot, onion).
-				new_pred_and_args = self.ground_new_args(action, subtree_objects)
+				new_pred_and_args = self.ground_new_args(action, subtree_objects, known_actions)
 				new_pred = new_pred_and_args.split('(')[0]
 				new_args = [x.strip() for x in new_pred_and_args.split('(')[1][:-1].split(',') if len(x.strip()) > 0 and x.strip() != ')' and x.strip() != '(']
 				new_args = [x for x in new_args if x.strip().lower() in OBJS]
 
 
 				if CONFIRM_GPT:
-					new_args = self.user_corrects_new_args(action, new_pred, new_args)
+					new_args = self.user_corrects_new_args(action, new_pred, new_args, known_actions)
 
 				new_pred_and_args_gen = '%s(%s)' % (new_pred, ', '.join([('<arg%d>' % (i+1)) for i in range(len(new_args))]))
 
