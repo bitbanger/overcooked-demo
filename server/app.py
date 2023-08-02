@@ -630,8 +630,8 @@ def on_html_state(data):
 
 @socketio.on('message')
 def on_message(msg):
-    print('got message:')
-    print(msg)
+    # print('got message:')
+    # print(msg)
 
     if msg['msg'].strip().lower() == 'undo':
         global webmux_id_to_html_state_queue
@@ -659,10 +659,10 @@ def on_message(msg):
 
         # in_stream_w.write(msg['msg'].strip() + '\n')
         if msg['msg'].strip() == '':
-            print('putting none')
+            # print('putting none')
             val_ai.in_stream.put('#NONE#')
         else:
-            print('putting %s' % (msg['msg'].strip(),))
+            # print('putting %s' % (msg['msg'].strip(),))
             val_ai.in_stream.put(msg['msg'].strip())
 
 @socketio.on('yesno')
