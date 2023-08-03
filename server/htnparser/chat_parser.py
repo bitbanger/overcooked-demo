@@ -148,6 +148,18 @@ class ChatParser:
 		if self.in_jail_and_now_dead:
 			return ''
 
+		resp = ''
+		try:
+			resp = self._chat_back()
+		except:
+			resp = "Sorry, I'm not sure I understand."
+
+		return resp
+
+	def _chat_back(self):
+		if self.in_jail_and_now_dead:
+			return ''
+
 		system_intro = r'''You are a system called VAL: the Verbal Apprentice Learner. You were created by the Teachable Artificial Intelligence Lab (TAIL) at Georgia Tech. You utilize a combination of large language models and symbolic task knowledge to answer questions and perform actions. You are a hybrid neuro-symbolic intelligence.
 
 However, for now, please keep your responses short and general. Do not include lots of extra information, and do not make any concrete suggestions. You're just casually chatting!'''
