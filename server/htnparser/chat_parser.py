@@ -41,6 +41,9 @@ def mk_yesno(yes_msg='Yes', no_msg='No'):
 
 class ChatParser:
 	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, uuid=None, silenced=False):
+		print('got chatlog in parser:')
+		for m in chatlog:
+			print('\t--- "%s"'%m)
 		self.uuid = uuid
 		self.toggle_inp = toggle_inp
 		self.GLOBAL_CHOICE_ID = 0
@@ -642,13 +645,34 @@ However, for now, please keep your responses short and general. Do not include l
 
 		return grounded
 
+	@staticmethod
+	def fmt_lst_str(l):
+		s = ''
+		for i in range(len(l)):
+			if i > 0 and i < len(l)-1 and len(l) > 1:
+				s += ', '
+			if i == len(l) - 1 and len(l) > 1:
+				s += ' and '
+			s += l[i]
+
+		return s
+
 	def user_corrects_new_args(self, action_nl, action_pred, guessed_args, known_actions):
 		# ask
 		msg = 'I think these are the objects of "<i>%s</i>":' % (action_nl,)
 		msg = msg + '\n\n<code>%s</code> <b> ( </b> %s <b> ) </b>' % (action_pred, '<b> , </b>'.join([('<code>%s</code>' % x) for x in guessed_args]))
 		msg = msg + '\n\nIs that right?' + YESNO
-		if self.wait_input(msg, disable_inp=True) == 'Y':
+		user_resp = self.wait_input(msg, disable_inp=True)
+
+		if user_resp == 'Y':
 			return guessed_args
+		elif all([o.strip().lower() in OBJS for o in user_resp.split(' ')]):
+			user_args = [o.strip().lower() for o in user_resp.split(' ')]
+			if user_args == guessed_args:
+				return guessed_args
+			else:
+				self.out_fn("Ah, I see you're doing a replay of this session and fixing the nondeterministic argument order bug. Gotcha. I'll use the argument%s %s instead." % ('s' if len(user_args) != 1 else '', self.fmt_lst_str(["'%s'"%x for x in user_args])))
+				return user_args
 
 		# correct
 		objs = OBJS

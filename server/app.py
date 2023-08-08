@@ -173,6 +173,9 @@ def premove_undo(game_uuid=None):
     with app.app_context():
         socketio.emit('premove_undo', {'id': webmuxid})
 
+def game_updater(msg, game_uuid=None):
+    print('EVENT: %s' % msg.strip())
+
 #################################
 # Global Coordination Functions #
 #################################
@@ -198,7 +201,7 @@ def try_create_game(game_name, chatlog=[], **kwargs):
             os.mkdir('demo_logs/%s' % game_uuid)
         except:
             pass
-        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), socketio=socketio, app=app, premove_sender=send_premove_msg, out_fn=lambda msg: chat_out_fn(msg, game_uuid=game_uuid), chatlog=chatlog, toggle_inp=toggle_inp, uuid=game_uuid, **kwargs)
+        game = game_cls(id=curr_id, in_stream=multiprocessing.Queue(), socketio=socketio, app=app, premove_sender=send_premove_msg, out_fn=lambda msg: chat_out_fn(msg, game_uuid=game_uuid), chatlog=chatlog, toggle_inp=toggle_inp, uuid=game_uuid, mdp_params={'game_updater': lambda x: game_updater(x, game_uuid=game_uuid)}, **kwargs)
     except queue.Empty:
         err = RuntimeError("Server at max capacity")
         return None, err
@@ -538,6 +541,10 @@ def on_create(data):
                         chatlog = [x.strip() for x in f.read().strip().split('\n')]
                 except:
                     print('error opening file "%s"' % (chatlog_filename,))
+
+        print('chatlog:')
+        for l in chatlog:
+            print('\t--- %s'%l)
 
         _create_game(user_id, game_name, params, chatlog=chatlog)
     
