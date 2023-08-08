@@ -398,7 +398,13 @@ class OvercookedGame(Game):
         self.socketio = socketio
         layouts=["asymmetric_advantages_tomato"]
         super(OvercookedGame, self).__init__(**kwargs)
+
+        self.model_override = None
         self.chatlog = chatlog
+        if len(self.chatlog) > 1 and 'gpt-' in self.chatlog[0]:
+            self.model_override = self.chatlog[0]
+            self.chatlog = self.chatlog[1:]
+
         self.premove_sender = premove_sender
         self.show_potential = showPotential
         self.mdp_params = mdp_params
@@ -619,7 +625,10 @@ class OvercookedGame(Game):
         # return ManualAI(self)
         try:
             print('making new valAI')
-            return ValAI(self, app=self.app, socketio=self.socketio, in_stream=self.in_stream, out_fn=self.out_fn, chatlog=self.chatlog, gameid=self.id, premove_sender=self.premove_sender, toggle_inp=self.toggle_inp, uuid=self.uuid)
+            vai = ValAI(self, app=self.app, socketio=self.socketio, in_stream=self.in_stream, out_fn=self.out_fn, chatlog=self.chatlog, gameid=self.id, premove_sender=self.premove_sender, toggle_inp=self.toggle_inp, uuid=self.uuid)
+            if self.model_override is not None:
+                vai.itl.parser.gpt.model_name = self.model_override
+            return vai
         except Exception as e:
             print(repr(e))
             traceback.print_exc()

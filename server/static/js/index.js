@@ -10,13 +10,21 @@ $(document).ready(function() {
 
 $(function() {
     $('#create').click(function () {
+		var urlParams = new URLSearchParams(window.location.search);
+
         params = arrToJSON($('form').serializeArray());
         params.layouts = [params.layout]
+
+		var chatlog_filename = $('#chatlogfnbox').val();
+		if (urlParams.get('chatlog') != null) {
+			chatlog_filename = urlParams.get('chatlog');
+		}
+
         data = {
             "params" : params,
             "game_name" : "overcooked",
             "create_if_not_found" : false,
-            "chatlog_filename" : $('#chatlogfnbox').val()
+            "chatlog_filename" : chatlog_filename
         };
         socket.emit("create", data);
         $('#waiting').show();
@@ -28,7 +36,6 @@ $(function() {
         $('#chatlogfnbox').attr("disabled", true)
         $("#instructions").hide();
         $('#tutorial').hide();
-		var urlParams = new URLSearchParams(window.location.search);
 		if (urlParams.get('practice') == 'true') {
 			console.log('practice mode');
 			$('#undo').hide();
@@ -53,7 +60,7 @@ $(function() {
     });
 	setTimeout(function() {
 		var urlParams = new URLSearchParams(window.location.search);
-		if (urlParams.get('practice') == 'true') {
+		if (urlParams.get('practice') == 'true' || urlParams.get('chatlog') != null) {
 			$('#create').trigger('click');
 		}
 	}, 100);

@@ -41,6 +41,7 @@ def mk_yesno(yes_msg='Yes', no_msg='No'):
 
 class ChatParser:
 	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, uuid=None, silenced=False):
+		self.used_chatlog = False
 		print('got chatlog in parser:')
 		for m in chatlog:
 			print('\t--- "%s"'%m)
@@ -98,6 +99,7 @@ class ChatParser:
 
 		ret = None
 		if self.chatlog:
+			self.used_chatlog = True
 			# print(self.gameid)
 			resp = self.chatlog[0].strip()
 			print('auto-responding %s' % (resp,))
@@ -107,6 +109,8 @@ class ChatParser:
 			self.chatlog = self.chatlog[1:]
 			ret = resp.strip()
 		else:
+			if self.used_chatlog:
+				print('EVENT: done')
 			self.silenced = False
 			inp = None
 			while not inp:
@@ -666,8 +670,8 @@ However, for now, please keep your responses short and general. Do not include l
 
 		if user_resp == 'Y':
 			return guessed_args
-		elif all([o.strip().lower() in OBJS for o in user_resp.split(' ')]):
-			user_args = [o.strip().lower() for o in user_resp.split(' ')]
+		elif all([o.strip().lower() in OBJS for o in user_resp.strip().split(' ')]):
+			user_args = [o.strip().lower() for o in user_resp.strip().split(' ')]
 			if user_args == guessed_args:
 				return guessed_args
 			else:

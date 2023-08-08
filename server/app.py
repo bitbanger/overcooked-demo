@@ -754,6 +754,8 @@ def on_undo_post_fadeout(msg):
     new_val_ai.itl.uuid = curr_val_ai.uuid
     new_val_ai.itl.parser.uuid = curr_val_ai.uuid
 
+    new_val_ai.itl.parser.gpt.model_name = curr_val_ai.itl.parser.gpt.model_name
+
     new_val_ai.itl.parser.inps = curr_val_ai.itl.parser.inps[:-1]
     new_val_ai.itl.parser.toggle_inp = toggle_inp
     new_val_ai.state_queue = curr_val_ai.state_queue[:-1]

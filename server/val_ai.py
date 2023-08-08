@@ -547,6 +547,8 @@ class ValAI():
 				# pass
 				return Action.STAY, None
 			else:
+				print('EVENT: crash')
+				print('EVENT: done')
 				raise e
 
 	def action_helper(self, state):
