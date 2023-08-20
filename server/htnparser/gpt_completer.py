@@ -6,6 +6,8 @@ import sys
 # import torch
 import xmlrpc.client
 
+from time import sleep
+
 MODEL_NAME = 'gpt-3.5-turbo'
 
 class GPTCompleter:
@@ -92,7 +94,13 @@ class GPTCompleter:
 			return '#TERMINATED#'
 			# print('in jail and now dead, but prompt is:')
 		# print(prompt)
+		retry_sleep = 0
 		for i in range(retries):
+			if retry_sleep > 0:
+				sleep(retry_sleep)
+			else:
+				retry_sleep = 0.5
+
 			if i == 0:
 				print('*', end='')
 			else:
@@ -100,8 +108,11 @@ class GPTCompleter:
 			try:
 				res = self.get_chat_gpt_completion_helper(prompt, temp=temp, rep_pen=rep_pen, max_length=max_length, stop=stop, system_intro=system_intro)
 			except openai.error.RateLimitError:
+				print('rate limit')
+				retry_sleep = retry_sleep * 2
 				continue
 			except openai.error.ServiceUnavailableError:
+				print('service unavailable')
 				continue
 
 			break

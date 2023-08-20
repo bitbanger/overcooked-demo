@@ -7,7 +7,7 @@ from logdiff import read, lines
 
 # Models used for sessions as the codebase was updated.
 # It's unfortunate to have to do it like this.
-models = ['gpt-3.5-turbo-0613']*1 + ['gpt-3.5-turbo-0301']*6 + ['gpt-4']*10
+models = ['gpt-3.5-turbo-0613']*1 + ['gpt-3.5-turbo-0301']*6 + ['gpt-4-0613']*2 + ['gpt-4']*10
 
 logdir = sys.argv[1].strip()
 
@@ -28,7 +28,7 @@ for i in range(len(raw_log)):
 			determined_args = re.findall('<code>([^<]*)</code>', last_line)[1:]
 
 	if len(line) >= 5 and line[:5] == 'User:':
-		if determined_args is not None and line.strip() != 'User: Y':
+		if determined_args is not None and line.strip() == 'User: Y':
 			print(' '.join(determined_args))
 		else:
 			print(line[6:])

@@ -245,6 +245,7 @@ However, for now, please keep your responses short and general. Do not include l
 					prompt = prompt + "\n***I apologize. I'll try for real this time."
 					prompt = prompt + '\n***OK, please do.'
 					retrying = True
+					print('EVENT: scold')
 					break
 				if 'DONE' in line:
 					done = True
@@ -296,7 +297,10 @@ However, for now, please keep your responses short and general. Do not include l
 			new_name = '%s%d' % (orig_name, i)
 			i += 1
 
-		return new_name + '(' + new_signature.split('(')[1]
+		if len(new_signature.split('(')) > 1:
+			return new_name + '(' + new_signature.split('(')[1]
+		else:
+			return new_name + '()'
 
 	def verbalize_pred(self, pred):
 		return self.gpt.get_chat_gpt_completion(self.verb_prompt%pred).strip()
@@ -540,6 +544,7 @@ However, for now, please keep your responses short and general. Do not include l
 		return new_explanation
 
 	def get_canonical_action(self, kas, grounded):
+		print('grounded is %s ' % (grounded,))
 		canonical_action_desc = [x for x in kas if x.split('(')[0] == grounded.split('(')[0]][0].split(' - ')[0].strip()
 		canonical_action = canonical_action_desc.split('(')[0]
 		canonical_action_args = [x.strip() for x in canonical_action_desc[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
@@ -668,10 +673,13 @@ However, for now, please keep your responses short and general. Do not include l
 		msg = msg + '\n\nIs that right?' + YESNO
 		user_resp = self.wait_input(msg, disable_inp=True)
 
+		user_args = [o.strip().lower() for o in user_resp.strip().split(' ')]
+		user_args = [x for x in user_args if len(x) > 0]
+		print('user_args: "%s"'%(user_args,))
+		print('guessed_args: "%s"'%(guessed_args,))
 		if user_resp == 'Y':
 			return guessed_args
-		elif all([o.strip().lower() in OBJS for o in user_resp.strip().split(' ')]):
-			user_args = [o.strip().lower() for o in user_resp.strip().split(' ')]
+		elif all([o.strip().lower() in OBJS for o in user_args]):
 			if user_args == guessed_args:
 				return guessed_args
 			else:
