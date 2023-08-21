@@ -102,17 +102,19 @@ class GPTCompleter:
 				retry_sleep = 0.5
 
 			if i == 0:
-				print('*', end='')
+				# print('*', end='')
+				pass
 			else:
-				print('.', end='')
+				# print('.', end='')
+				pass
 			try:
 				res = self.get_chat_gpt_completion_helper(prompt, temp=temp, rep_pen=rep_pen, max_length=max_length, stop=stop, system_intro=system_intro)
 			except openai.error.RateLimitError:
-				print('rate limit')
+				# print('rate limit')
 				retry_sleep = retry_sleep * 2
 				continue
 			except openai.error.ServiceUnavailableError:
-				print('service unavailable')
+				# print('service unavailable')
 				continue
 
 			break
@@ -149,7 +151,7 @@ class GPTCompleter:
 			key = hash(('chat', self.model_name, prompt, rep_pen, max_length, stop, system_intro))
 			key = int(hashlib.md5(str(('chat', self.model_name, prompt, rep_pen, max_length, stop, system_intro)).encode('utf-8')).hexdigest(), 16)
 			if key not in self.cache:
-				print('here11')
+				# print('here11')
 				self.cache[key] = openai.ChatCompletion.create(
 					model=self.model_name,
 					messages=annotated_msgs,
@@ -158,7 +160,7 @@ class GPTCompleter:
 					frequency_penalty=rep_pen,
 					stop=stop,
 				).choices[0].message.content
-				print('here22')
+				# print('here22')
 				with open('api_cache/%d' % key, 'w') as f:
 					f.write(self.cache[key])
 			# print('RESP:')

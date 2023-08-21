@@ -81,6 +81,14 @@ def count_gpt_success_rates(participants):
 		for comp in scores:
 			participants[pid]['%s_success_rate'%comp] = scores[comp]
 
+def count_paraphrase_error_rates(participants):
+	for pid in participants.keys():
+		uuid = subprocess.run(['bash', '-c', 'ls session%d*'%pid], capture_output=True).stdout.decode('utf-8').strip().split('\n')[-1]
+		d = 'session%d_demo_logs/%s' % (pid, uuid)
+		(false_pos_rate, false_neg_rate) = quant.get_paraphrase_scores(d)
+		participants[pid]['paraphrase_false_pos_rate'] = false_pos_rate
+		participants[pid]['paraphrase_false_neg_rate'] = false_neg_rate
+
 if __name__ == '__main__':
 	participants = defaultdict(lambda: defaultdict(int))
 
@@ -91,6 +99,7 @@ if __name__ == '__main__':
 	count_scolds(participants)
 	count_crashes(participants)
 	count_gpt_success_rates(participants)
+	count_paraphrase_error_rates(participants)
 
 	# pass 2
 	count_norm_msgs(participants)
@@ -120,3 +129,21 @@ if __name__ == '__main__':
 			key = '%s\n\t'%key
 			comp = 'HIGHER' if tst.statistic < 0 else 'LOWER'
 			print('%s is significantly %s when using GPT-4 (p=%.3f)' % (key, comp, tst.pvalue))
+
+	print('\n========\n')
+
+	for key in all_keys:
+		group1 = [participants[i][key] for i in range(1, 8)]
+		group2 = [participants[i][key] for i in range(8, 13)]
+
+		tst = stats.ttest_ind(group1, group2)
+		if tst.pvalue > 0.052:
+			comp = 'HIGHER' if tst.statistic < 0 else 'LOWER'
+			print('%s: %s @ %.3f' % (key, comp, tst.pvalue))
+
+	print('\n========\n')
+
+	for key in sorted(all_keys):
+		if 'survey' not in key:
+			scores = [participants[i][key] for i in range(1, 13)]
+			print('%s: %s' % (key, sum(scores)*1.0/len(scores)))

@@ -14,8 +14,6 @@ OBJS = ['pot', 'onion', 'tomato', 'dropoff', 'plate']
 # OBJS = ['tan', 'celery', 'allen', 'foggybottom', 'peachtreecenter']
 OBJ_STR = '[%s]' % (', '.join(o for o in OBJS),)
 
-CONFIRM_GPT = True
-
 RECLARIFY = 'RECLARIFY'
 ACT_FN = 'prompts/convo2.txt'
 SEG_FN = 'prompts/chat_segmenter.txt'
@@ -40,11 +38,12 @@ def mk_yesno(yes_msg='Yes', no_msg='No'):
 	return CUSTOM_YESNO % (yes_msg.strip(), no_msg.strip())
 
 class ChatParser:
-	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, uuid=None, silenced=False):
+	def __init__(self, act_prompt_fn=ACT_FN, segment_prompt_fn=SEG_FN, name_prompt_fn=NAME_FN, ground_prompt_fn=GROUND_FN, para_fn=PARA_FN, verb_fn=VERB_FN, in_stream=sys.stdin, out_fn=print, chatlog=[], gameid=None, socketio=None, app=None, premove_sender=None, toggle_inp=None, uuid=None, silenced=False, gpt_model_override=None, confirm_gpt=True):
+		self.confirm_gpt = confirm_gpt
 		self.used_chatlog = False
-		print('got chatlog in parser:')
-		for m in chatlog:
-			print('\t--- "%s"'%m)
+		# print('got chatlog in parser:')
+		# for m in chatlog:
+			# print('\t--- "%s"'%m)
 		self.uuid = uuid
 		self.toggle_inp = toggle_inp
 		self.GLOBAL_CHOICE_ID = 0
@@ -72,6 +71,8 @@ class ChatParser:
 		self.preselect_prompt = self.load_prompt('prompts/preselect_grounder.txt')
 
 		self.gpt = GPTCompleter()
+		if gpt_model_override is not None:
+			self.gpt.model_name = gpt_model_override
 
 	def yesno(self, prompt, yes_msg='Yes', no_msg='No'):
 		return self.wait_input(prompt+mk_yesno(yes_msg=yes_msg, no_msg=no_msg), disable_inp=True).lower().strip() == 'y'
@@ -92,7 +93,7 @@ class ChatParser:
 			else:
 				self.toggle_inp(game_id=self.gameid, disabled=False)
 
-		print('prompt is %s' % (prompt,))
+		# print('prompt is %s' % (prompt,))
 
 		if prompt:
 			self.out_fn(prompt)
@@ -102,7 +103,7 @@ class ChatParser:
 			self.used_chatlog = True
 			# print(self.gameid)
 			resp = self.chatlog[0].strip()
-			print('auto-responding %s' % (resp,))
+			# print('auto-responding %s' % (resp,))
 			# with self.app.app_context():
 				# self.socketio.emit('premovemsg_internal', {'msg': resp.strip(), 'gameid': self.gameid})
 			self.premove_sender(self.gameid, resp.strip(), silenced=self.silenced)
@@ -110,7 +111,8 @@ class ChatParser:
 			ret = resp.strip()
 		else:
 			if self.used_chatlog:
-				print('EVENT: done')
+				# print('EVENT: done')
+				pass
 			self.silenced = False
 			inp = None
 			while not inp:
@@ -146,7 +148,7 @@ class ChatParser:
 
 		if ret != '#TERMINATED#' and ret != 'undo' and not self.silenced:
 			self.inps.append(ret)
-			print('added %s to rets' % (ret,))
+			# print('added %s to rets' % (ret,))
 			self.save_state()
 
 		return ret
@@ -183,7 +185,7 @@ However, for now, please keep your responses short and general. Do not include l
 				msg = ':'.join([x.strip() for x in line.split(':')][1:]).strip()
 				if len(msg) > 0:
 					msgs.append(msg)
-		print(msgs)
+		# print(msgs)
 
 		return self.gpt.get_chat_gpt_completion('\n***\n'.join(msgs), system_intro=system_intro)
 
@@ -245,7 +247,7 @@ However, for now, please keep your responses short and general. Do not include l
 					prompt = prompt + "\n***I apologize. I'll try for real this time."
 					prompt = prompt + '\n***OK, please do.'
 					retrying = True
-					print('EVENT: scold')
+					# print('EVENT: scold')
 					break
 				if 'DONE' in line:
 					done = True
@@ -388,13 +390,13 @@ However, for now, please keep your responses short and general. Do not include l
 		if len(resp) >= 2 and resp[0] == '"' and resp[-1] == '"':
 			resp = resp[1:-1]
 
-		print('preselect resp: %s' % (resp,))
+		# print('preselect resp: %s' % (resp,))
 
 		# print(prompt)
 		# print(resp)
 
 		if resp.lower()[:len(chosen_action)] != chosen_action.lower() or resp[len(chosen_action)] != '(' or resp[-1] != ')':
-			print('resp was %s, sadly; c.f. %s' % (resp.lower(), chosen_action.lower()))
+			# print('resp was %s, sadly; c.f. %s' % (resp.lower(), chosen_action.lower()))
 			return None
 
 		if '"' in resp:
@@ -414,21 +416,21 @@ However, for now, please keep your responses short and general. Do not include l
 
 	def ground_action(self, known_actions, world_state, action):
 		chosen_action_pred = self.choose_action_pred(known_actions, world_state, action)
-		print('chose pred %s for "%s"' % (chosen_action_pred, action))
-		print('kas were %s' % (known_actions,))
+		# print('chose pred %s for "%s"' % (chosen_action_pred, action))
+		# print('kas were %s' % (known_actions,))
 
 		objs = OBJS
 
 		if (chosen_action_pred == 'noGoodAction' or chosen_action_pred not in [x.split('(')[0] for x in known_actions]):
 			# Case 1: no ID'd action
-			if CONFIRM_GPT:
+			if self.confirm_gpt:
 				chosen_action_pred = self.confirm_no_good_action(known_actions, world_state, action)
 			if chosen_action_pred == 'noGoodAction':
 				# User confirms they want to teach this
 				return 'noGoodAction'
 			# The user either confirmed it or picked the right one,
 			# so we'll move on now
-		elif CONFIRM_GPT and not self.confirm_guessed_action(action, chosen_action_pred):
+		elif self.confirm_gpt and not self.confirm_guessed_action(action, chosen_action_pred):
 			# Case 2: we did ID an action, but the user didn't confirm it
 			chosen_action_pred = self.user_corrects_action(known_actions, world_state, action)
 			if chosen_action_pred == 'noGoodAction':
@@ -442,11 +444,11 @@ However, for now, please keep your responses short and general. Do not include l
 
 		# Now that we have an action, let's pick some args
 		chosen_action_args = self.choose_action_args(chosen_action_pred, world_state, action, len(canonical_action_args))
-		print('chose action args: %s' % (chosen_action_args,))
+		# print('chose action args: %s' % (chosen_action_args,))
 
 		err_msg = ''
 		if chosen_action_args is None:
-			if CONFIRM_GPT:
+			if self.confirm_gpt:
 				# The arg grounder failed. We'll ask for some manually.
 
 				err_msg = "Sorry, but I wasn't able to figure out what objects go with the action <code>%s</code> here. Could you help me choose them?"%chosen_action_pred
@@ -470,9 +472,9 @@ However, for now, please keep your responses short and general. Do not include l
 		# If we were forced, by the user, to pick an action, don't bother
 		# using GPT to find out if it's a good paraphrase; they *told us* it was.
 
-		if not CONFIRM_GPT:
+		if not self.confirm_gpt:
 			if not self.is_paraphrase(action, chosen_action_args):
-				print("%s wasn't a paraphrase of %s" % (action, chosen_action_args))
+				# print("%s wasn't a paraphrase of %s" % (action, chosen_action_args))
 				return 'noGoodAction'
 
 		return chosen_action_args
@@ -544,7 +546,7 @@ However, for now, please keep your responses short and general. Do not include l
 		return new_explanation
 
 	def get_canonical_action(self, kas, grounded):
-		print('grounded is %s ' % (grounded,))
+		# print('grounded is %s ' % (grounded,))
 		canonical_action_desc = [x for x in kas if x.split('(')[0] == grounded.split('(')[0]][0].split(' - ')[0].strip()
 		canonical_action = canonical_action_desc.split('(')[0]
 		canonical_action_args = [x.strip() for x in canonical_action_desc[:-1].split('(')[1].split(',') if len(x.strip()) > 0]
@@ -597,7 +599,7 @@ However, for now, please keep your responses short and general. Do not include l
 		user_oks_args = True
 
 		if parity_oks_args and len(canonical_action_args) > 0:
-			if CONFIRM_GPT:
+			if self.confirm_gpt:
 				user_oks_args = self.confirm_guessed_args(grounded_action, grounded_args)
 
 		obj_maybe_plur = 'objects' if len(canonical_action_args) != 1 else 'object'
@@ -633,7 +635,7 @@ However, for now, please keep your responses short and general. Do not include l
 			dropdown_template = dropdown_template + '</select>'
 
 			slots = canonical_action_args
-			print('slot: %s' % (slots,))
+			# print('slot: %s' % (slots,))
 
 			new_args_msg = err_msg + '\n\n'
 			action_str = '<code>%s</code><b>(</b> ' % canonical_action
@@ -648,7 +650,7 @@ However, for now, please keep your responses short and general. Do not include l
 			new_args_msg = '<form class="argdropdownform" id="argdropdownform">%s\n\n<input type="submit" class="msger-yes-btn"></form>'  % (new_args_msg,)
 
 			selection = self.wait_input(new_args_msg, disable_inp=True)
-			print('got selection %s' % (selection,))
+			# print('got selection %s' % (selection,))
 			parsed_new_args = selection.strip().split('\t')
 			grounded = grounded.split('(')[0] + '(' + ','.join(parsed_new_args) + ')'
 
@@ -675,8 +677,8 @@ However, for now, please keep your responses short and general. Do not include l
 
 		user_args = [o.strip().lower() for o in user_resp.strip().split(' ')]
 		user_args = [x for x in user_args if len(x) > 0]
-		print('user_args: "%s"'%(user_args,))
-		print('guessed_args: "%s"'%(guessed_args,))
+		# print('user_args: "%s"'%(user_args,))
+		# print('guessed_args: "%s"'%(guessed_args,))
 		if user_resp == 'Y':
 			return guessed_args
 		elif all([o.strip().lower() in OBJS for o in user_args]):
@@ -761,7 +763,7 @@ However, for now, please keep your responses short and general. Do not include l
 		if choice == 'noGoodAction':
 			return choice
 
-		print('user chose %s' % (choice,))
+		# print('user chose %s' % (choice,))
 
 		# The user chose an action, so we'll do a forced grounding for the args.
 		# The caller (handle_known_action) will handle arg confirmation.
@@ -868,7 +870,7 @@ However, for now, please keep your responses short and general. Do not include l
 			action_segments = [x.split('"')[-2] for x in full_action_segments]
 
 			choice = 'Y'
-			if CONFIRM_GPT:
+			if self.confirm_gpt:
 				if clarify_action:
 					choice = self.confirm_segments(action_segments, clarify_action=clarify_action)
 				else:
@@ -899,7 +901,7 @@ However, for now, please keep your responses short and general. Do not include l
 				print('level %d yielding known %s' % (level, maybe_known_action))
 				print("IF THERE IS A BUG WITH ACTION SEQUENCES, IT'S PROBABLY CAUSED HERE. DO NOT REMOVE THIS DEBUG MESSAGE.")
 				if not clarify_action or maybe_known_action[1] not in [x.split('(')[0] for x in known_actions]:
-					print('yielding got inp here %s' % (maybe_known_action,))
+					# print('yielding got inp here %s' % (maybe_known_action,))
 					yield ['action_stream', maybe_known_action]
 				yield maybe_known_action
 			else: # New, unknown action
@@ -931,11 +933,11 @@ However, for now, please keep your responses short and general. Do not include l
 							if type(elem) == dict:
 								rec_new_action_defs = elem
 							elif elem[0] != 'action_stream' and elem[1] in [x.split('(')[0] for x in known_actions]:
-								print('level %d elem-yielding %s' % (level, elem))
+								# print('level %d elem-yielding %s' % (level, elem))
 								yield ['action_stream', elem]
 								rec_action_seq.append(elem)
 							elif elem[0] != 'action_stream':
-								print('level %d elem-yielding %s' % (level, elem))
+								# print('level %d elem-yielding %s' % (level, elem))
 								yield elem
 								rec_action_seq.append(elem)
 							elif elem[0] == 'action_stream':
@@ -967,7 +969,7 @@ However, for now, please keep your responses short and general. Do not include l
 				new_args = [x for x in new_args if x.strip().lower() in OBJS]
 
 
-				if CONFIRM_GPT:
+				if self.confirm_gpt:
 					new_args = self.user_corrects_new_args(action, new_pred, new_args, known_actions)
 
 				new_pred_and_args_gen = '%s(%s)' % (new_pred, ', '.join([('<arg%d>' % (i+1)) for i in range(len(new_args))]))
@@ -986,8 +988,8 @@ However, for now, please keep your responses short and general. Do not include l
 				# add the new predicate to the action sequence.
 				new_known_actions.append(new_pred_and_args_gen + ' - a learned action')
 				# action_seq.append(['learned', new_pred, new_args])
-				print('level %d yielding %s' % (level, ['learned', new_pred, new_args],))
-				print('defined it as %s' % (rec_action_seq,))
+				# print('level %d yielding %s' % (level, ['learned', new_pred, new_args],))
+				# print('defined it as %s' % (rec_action_seq,))
 				new_action_defs[new_pred.lower()] = (rec_action_seq, new_args)
 				yield ['learned', new_pred, new_args]
 
@@ -1008,7 +1010,7 @@ However, for now, please keep your responses short and general. Do not include l
 					new_seq.append(nest)
 			new_action_defs[new_pred] = (new_seq, new_action_defs[new_pred][1])
 
-		print('yielding new action defs %s' % (new_action_defs,))
+		# print('yielding new action defs %s' % (new_action_defs,))
 		yield new_action_defs
 		# return (None, action_seq, new_action_defs)
 
