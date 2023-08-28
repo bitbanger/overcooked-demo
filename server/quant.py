@@ -38,7 +38,7 @@ def msg_points(log, msg_idx):
 def is_modal(line):
 	return '"radio' in line or '<button' in line or '<select' in line
 
-def get_paraphrase_scores(d):
+def get_paraphrase_scores(d, all_scores=False):
 	false_pos = 0
 	false_neg = 0
 	paraphrase_count = 0
@@ -90,17 +90,25 @@ def get_paraphrase_scores(d):
 			# works, and we know that it won't even run now
 			pass
 
-	false_pos_rate = false_pos*1.0/paraphrase_count
-	false_neg_rate = false_neg*1.0/paraphrase_count
+	true_pos = paraphrase_count-false_pos
+	true_neg = paraphrase_count-false_neg
 
-	return (false_pos_rate, false_neg_rate)
+	# false_pos_rate = false_pos*1.0/paraphrase_count
+	false_pos_rate = false_pos*1.0 / (false_pos + true_neg)
+	false_neg_rate = false_neg*1.0 / (false_neg + true_pos)
 
-def get_scores(d):
+	f1 = (true_pos * 1.0) / (true_pos + 0.5 * (false_pos + false_neg))
+
+	if all_scores:
+		return (false_pos, false_neg, true_pos, true_neg)
+	else:
+		return (false_pos_rate, false_neg_rate, f1)
+
+def get_scores(d, all_scores=False):
 	# log_lines = lines(read(os.path.join(sys.argv[1], 'log.txt')))
 	log_lines = lines(read(os.path.join(d, 'log.txt')))
 
-	scores = defaultdict(int)
-	totals = defaultdict(int)
+	scores = defaultdict(list)
 
 	for i in range(len(log_lines)):
 		line = log_lines[i]
@@ -110,22 +118,23 @@ def get_scores(d):
 			if cls is not None:
 				# print(classify_modal(log_lines[i-1]), line)
 				if 'args_too_hard' in cls:
-					totals['groundGPT'] += 1
+					scores['groundGPT'].append(0)
 				elif cls == 'confirm_no_good_action':
-					totals['mapGPT'] += 1
 					if line == 'User: N':
-						scores['mapGPT'] += 1
+						scores['mapGPT'].append(1)
 				elif line == 'User: Y':
-					scores[cls] += 1
-					totals[cls] += 1
+					scores[cls].append(1)
 				else:
-					totals[cls] += 1
+					scores[cls].append(0)
 
 	for i in range(len(log_lines)):
 		line = log_lines[i]
 
 	res = dict()
 	for cls in sorted(scores.keys()):
-		res[cls] = scores[cls]*1.0/totals[cls]
+		res[cls] = sum(scores[cls])*1.0/len(scores[cls])
 
-	return res
+	if all_scores:
+		return scores
+	else:
+		return res

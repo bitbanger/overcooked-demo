@@ -9,6 +9,8 @@ import numpy as np
 from collections import defaultdict
 from scipy import stats
 
+P_THRESH = 0.06
+
 def count_undos(participants):
 	undo_counts = [int(x.strip()) for x in subprocess.run(['/usr/bin/env', 'bash', '-c', 'for i in $(seq 1 12); do ls session${i}*/*/*undo* | wc -l; done'], capture_output=True).stdout.decode('utf-8').strip().split('\n')]
 	for i in range(len(undo_counts)):
@@ -85,9 +87,10 @@ def count_paraphrase_error_rates(participants):
 	for pid in participants.keys():
 		uuid = subprocess.run(['bash', '-c', 'ls session%d*'%pid], capture_output=True).stdout.decode('utf-8').strip().split('\n')[-1]
 		d = 'session%d_demo_logs/%s' % (pid, uuid)
-		(false_pos_rate, false_neg_rate) = quant.get_paraphrase_scores(d)
+		(false_pos_rate, false_neg_rate, f1) = quant.get_paraphrase_scores(d)
 		participants[pid]['paraphrase_false_pos_rate'] = false_pos_rate
 		participants[pid]['paraphrase_false_neg_rate'] = false_neg_rate
+		participants[pid]['paraphrase_f1'] = f1
 
 if __name__ == '__main__':
 	participants = defaultdict(lambda: defaultdict(int))
@@ -117,8 +120,13 @@ if __name__ == '__main__':
 		group1 = [participants[i][key] for i in range(1, 8)]
 		group2 = [participants[i][key] for i in range(8, 13)]
 
-		tst = stats.ttest_ind(group1, group2)
-		if tst.pvalue <= 0.052:
+		tst_fn = stats.ttest_ind
+		#if 'survey' in key:
+		#	tst_fn = stats.mannwhitneyu
+
+		tst = tst_fn(group1, group2)
+
+		if tst.pvalue <= P_THRESH:
 			if not first:
 				print('')
 			else:
@@ -136,8 +144,12 @@ if __name__ == '__main__':
 		group1 = [participants[i][key] for i in range(1, 8)]
 		group2 = [participants[i][key] for i in range(8, 13)]
 
-		tst = stats.ttest_ind(group1, group2)
-		if tst.pvalue > 0.052:
+		tst_fn = stats.ttest_ind
+		#if 'survey' in key:
+		#	tst_fn = stats.mannwhitneyu
+
+		tst = tst_fn(group1, group2)
+		if tst.pvalue > P_THRESH:
 			comp = 'HIGHER' if tst.statistic < 0 else 'LOWER'
 			print('%s: %s @ %.3f' % (key, comp, tst.pvalue))
 
@@ -146,4 +158,64 @@ if __name__ == '__main__':
 	for key in sorted(all_keys):
 		if 'survey' not in key:
 			scores = [participants[i][key] for i in range(1, 13)]
-			print('%s: %s' % (key, sum(scores)*1.0/len(scores)))
+			print('%s: %.2f' % (key, sum(scores)*1.0/len(scores)))
+
+	print('\n========\n')
+
+	for cls in [x.split('_')[0] for x in all_keys if 'GPT_succ' in x]:
+		turbo_yeses = 0
+		turbo_nos = 0
+		for pid in range(1, 8):
+			uuid = subprocess.run(['bash', '-c', 'ls session%d*'%pid], capture_output=True).stdout.decode('utf-8').strip().split('\n')[-1]
+			d = 'session%d_demo_logs/%s' % (pid, uuid)
+			scores = quant.get_scores(d, all_scores=True)
+			turbo_yeses += sum(scores[cls])
+			turbo_nos += len(scores[cls])-sum(scores[cls])
+
+		four_yeses = 0
+		four_nos = 0
+		for pid in range(8, 13):
+			uuid = subprocess.run(['bash', '-c', 'ls session%d*'%pid], capture_output=True).stdout.decode('utf-8').strip().split('\n')[-1]
+			d = 'session%d_demo_logs/%s' % (pid, uuid)
+			scores = quant.get_scores(d, all_scores=True)
+			four_yeses += sum(scores[cls])
+			four_nos += len(scores[cls])-sum(scores[cls])
+
+		print('%s: %s' % (cls, stats.chi2_contingency([[turbo_yeses, four_yeses], [turbo_nos, four_nos]]).pvalue))
+
+
+	print('\n========\n')
+
+	(fp3, fn3, tp3, tn3) = (0, 0, 0, 0)
+	(fp4, fn4, tp4, tn4) = (0, 0, 0, 0)
+
+	for pid in range(1, 8):
+		uuid = subprocess.run(['bash', '-c', 'ls session%d*'%pid], capture_output=True).stdout.decode('utf-8').strip().split('\n')[-1]
+		d = 'session%d_demo_logs/%s' % (pid, uuid)
+		(nfp3, nfn3, ntp3, ntn3) = quant.get_paraphrase_scores(d, all_scores=True)
+		fp3 += nfp3
+		fn3 += nfn3
+		tp3 += ntp3
+		tn3 += ntn3
+
+	for pid in range(8, 13):
+		uuid = subprocess.run(['bash', '-c', 'ls session%d*'%pid], capture_output=True).stdout.decode('utf-8').strip().split('\n')[-1]
+		d = 'session%d_demo_logs/%s' % (pid, uuid)
+		(nfp4, nfn4, ntp4, ntn4) = quant.get_paraphrase_scores(d, all_scores=True)
+		fp4 += nfp4
+		fn4 += nfn4
+		tp4 += ntp4
+		tn4 += ntn4
+
+	print(fp3, fn3, tp3, tn3)
+	print(fp4, fn4, tp4, tn4)
+	print('gpt-3.5-turbo FP rate: %.2f' % (fp3*1.0/(fp3+tn3)))
+	print('gpt-3.5-turbo FN rate: %.2f' % (fn3*1.0/(fn3+tp3)))
+	print('gpt-4 FP rate: %.2f' % (fp4*1.0/(fp4+tn4)))
+	print('gpt-4 FN rate: %.2f' % (fn4*1.0/(fn4+tp4)))
+
+	print('total TP rate: %.2f' % ((tp3+tp4)*1.0/((tp3+tp4)+(fn3+fn4)),))
+	print('total TN rate: %.2f' % ((tn3+tn4)*1.0/((tn3+tn4)+(fp3+fp4)),))
+
+	print('FP rate: %s' % (stats.chi2_contingency([[fp3, fp4], [fp3+tn3, fp4+tn3]]),))
+	print('FN rate: %s' % (stats.chi2_contingency([[fn3, fn4], [fn3+tp3, fn4+tp4]]),))
